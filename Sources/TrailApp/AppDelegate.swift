@@ -109,32 +109,60 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     private func statusIcon(accent: NSColor) -> NSImage {
-        let size = NSSize(width: 20, height: 16)
+        let size = NSSize(width: 23, height: 16)
         let image = NSImage(size: size)
         image.lockFocus()
         let color = NSColor.controlTextColor
 
-        // Wagon body
-        let body = NSBezierPath(roundedRect: NSRect(x: 1, y: 5, width: 14, height: 6), xRadius: 1, yRadius: 1)
+        // A recognisable covered-wagon silhouette: arched canvas, shallow bed,
+        // separated wheels, and a short tongue. Half-point coordinates keep the
+        // strokes crisp in the menu bar at both 1x and Retina scale.
+        let canvas = NSBezierPath()
+        canvas.move(to: NSPoint(x: 2.5, y: 7.5))
+        canvas.line(to: NSPoint(x: 2.5, y: 9))
+        canvas.curve(
+            to: NSPoint(x: 6, y: 14),
+            controlPoint1: NSPoint(x: 2.5, y: 11.8),
+            controlPoint2: NSPoint(x: 4, y: 14)
+        )
+        canvas.line(to: NSPoint(x: 12, y: 14))
+        canvas.curve(
+            to: NSPoint(x: 15.5, y: 9),
+            controlPoint1: NSPoint(x: 14, y: 14),
+            controlPoint2: NSPoint(x: 15.5, y: 11.8)
+        )
+        canvas.line(to: NSPoint(x: 15.5, y: 7.5))
+        canvas.close()
+        color.withAlphaComponent(0.18).setFill()
+        canvas.fill()
+        color.setStroke()
+        canvas.lineWidth = 1.25
+        canvas.lineJoinStyle = .round
+        canvas.stroke()
+
+        let body = NSBezierPath(roundedRect: NSRect(x: 1.5, y: 5, width: 15, height: 3.5), xRadius: 0.75, yRadius: 0.75)
         color.setFill()
         body.fill()
 
-        // Canvas
-        let canvas = NSBezierPath(roundedRect: NSRect(x: 2.5, y: 10, width: 11, height: 4.5), xRadius: 1.5, yRadius: 1.5)
-        color.withAlphaComponent(0.82).setFill()
-        canvas.fill()
+        let tongue = NSBezierPath()
+        tongue.move(to: NSPoint(x: 16, y: 7))
+        tongue.line(to: NSPoint(x: 19.25, y: 5.25))
+        color.setStroke()
+        tongue.lineWidth = 1.25
+        tongue.lineCapStyle = .round
+        tongue.stroke()
 
-        // Wheels
-        for x in [3.0, 11.5] {
-            let wheel = NSBezierPath(ovalIn: NSRect(x: x, y: 1.5, width: 3.5, height: 3.5))
-            color.setFill()
-            wheel.fill()
+        for x in [3.0, 12.0] {
+            let wheel = NSBezierPath(ovalIn: NSRect(x: x, y: 1.5, width: 4, height: 4))
+            color.setStroke()
+            wheel.lineWidth = 1.25
+            wheel.stroke()
         }
 
         // A compact state light keeps health attached to the world icon rather
         // than competing with the mileage as a second full-size glyph.
         accent.setFill()
-        NSBezierPath(ovalIn: NSRect(x: 16, y: 10.5, width: 4, height: 4)).fill()
+        NSBezierPath(ovalIn: NSRect(x: 19, y: 11.5, width: 3.5, height: 3.5)).fill()
         image.unlockFocus()
         image.isTemplate = false
         return image
