@@ -184,6 +184,20 @@ final class SimulationTests: XCTestCase {
         XCTAssertTrue(observedIllness, "expected at least one deterministic illness seed")
     }
 
+    func testSnakeBiteDoesNotReplaceAnExistingIllness() {
+        let party = Party(members: [
+            PartyMember(name: "Ada", ailment: .cholera, daysIll: 4),
+        ])
+        let sim = Simulation(seed: 1, party: party, supplies: Supplies())
+        var log: [String] = []
+
+        sim.snakeBite(log: &log)
+
+        XCTAssertEqual(sim.party.members[0].ailment, .cholera)
+        XCTAssertEqual(sim.party.members[0].daysIll, 4)
+        XCTAssertEqual(log, ["A rattler circles the camp, but no one is struck."])
+    }
+
     func testHuntingCannotSpendMoreAmmunitionThanAvailable() {
         var observedHunt = false
 

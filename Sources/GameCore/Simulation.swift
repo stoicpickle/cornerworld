@@ -411,9 +411,14 @@ public final class Simulation {
         }
     }
 
-    private func snakeBite(log: inout [String]) {
-        let candidates = party.members.indices.filter { party.members[$0].isAlive }
-        guard let i = candidates.randomElement(using: &rng) else { return }
+    func snakeBite(log: inout [String]) {
+        let candidates = party.members.indices.filter {
+            party.members[$0].isAlive && party.members[$0].ailment == nil
+        }
+        guard let i = candidates.randomElement(using: &rng) else {
+            log.append("A rattler circles the camp, but no one is struck.")
+            return
+        }
         party.members[i].ailment = .snakebite
         party.members[i].daysIll = 0
         log.append("A rattler strikes at \(party.members[i].name)'s boot. The wound swells.")
