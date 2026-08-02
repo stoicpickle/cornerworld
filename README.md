@@ -25,8 +25,6 @@ slow-running scenario could eventually inhabit the same desktop form.
 - A trail journal and end-of-journey memorial summary.
 - A terminal runner for development and simulation checks.
 
-![Cornerworld menu-bar controls](docs/images/menu-controls.png)
-
 ## Requirements
 
 - macOS 13 or later
