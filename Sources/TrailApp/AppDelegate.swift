@@ -78,9 +78,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             button.title = "  🛒"
             button.image = statusIcon()
             button.imagePosition = .imageLeading
-            button.action = #selector(statusClicked)
-            button.target = self
-            button.sendAction(on: [.leftMouseUp, .rightMouseUp])
         }
         statusItem.menu = buildStatusMenu()
         updateMenus()

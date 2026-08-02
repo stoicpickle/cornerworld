@@ -356,6 +356,7 @@ final class TrailScene: SKScene {
     private func pixelTexture(rows: [String], palette: [Character: NSColor]) -> SKTexture {
         let h = rows.count
         let w = rows.map { $0.count }.max() ?? 1
+        guard h > 0, w > 0 else { return SKTexture() }
         var data = [UInt8](repeating: 0, count: w * h * 4)
         for (y, row) in rows.enumerated() {
             for (x, ch) in row.enumerated() {
@@ -367,10 +368,18 @@ final class TrailScene: SKScene {
                 data[o + 3] = 255
             }
         }
-        let ctx = CGContext(data: &data, width: w, height: h, bitsPerComponent: 8,
-                            bytesPerRow: w * 4, space: CGColorSpaceCreateDeviceRGB(),
-                            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
-        let tex = SKTexture(cgImage: ctx.makeImage()!)
+        guard let ctx = CGContext(
+            data: &data,
+            width: w,
+            height: h,
+            bitsPerComponent: 8,
+            bytesPerRow: w * 4,
+            space: CGColorSpaceCreateDeviceRGB(),
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+        ), let image = ctx.makeImage() else {
+            return SKTexture()
+        }
+        let tex = SKTexture(cgImage: image)
         tex.filteringMode = .nearest   // keep pixels hard-edged
         return tex
     }

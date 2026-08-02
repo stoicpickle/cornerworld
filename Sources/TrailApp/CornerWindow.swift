@@ -2,8 +2,8 @@ import AppKit
 
 final class CornerWindow: NSWindow {
     init(size: NSSize) {
-        let screen = NSScreen.main ?? NSScreen.screens.first!
-        let visible = screen.visibleFrame
+        let visible = (NSScreen.main ?? NSScreen.screens.first)?.visibleFrame
+            ?? NSRect(origin: .zero, size: NSSize(width: size.width + 24, height: size.height + 24))
         let origin = NSPoint(
             x: visible.minX + 12,
             y: visible.maxY - size.height - 12

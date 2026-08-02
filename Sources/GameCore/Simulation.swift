@@ -281,7 +281,9 @@ public final class Simulation {
         guard log.isEmpty else { return }
         let terrain = Trail.terrain(at: milesTraveled)
         let choices = Self.passiveVignettes(terrain: terrain, weather: currentWeather.kind)
-        log.append(choices[rng.int(in: 0...(choices.count - 1))])
+        if let choice = choices.randomElement(using: &rng) {
+            log.append(choice)
+        }
     }
 
     /// Routes one daily roll without consuming more randomness. Existing mechanical
