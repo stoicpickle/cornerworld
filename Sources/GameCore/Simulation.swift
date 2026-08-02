@@ -34,6 +34,7 @@ public final class Simulation {
     private var dayOfMonth: Int = 1
     private var crossedLandmarks: Set<String> = []
     private var weatherFrontDaysRemaining = 0
+    private var latestDeathCause: String?
 
     public enum Outcome: Equatable {
         case reachedOregon
@@ -45,6 +46,7 @@ public final class Simulation {
         self.party = party ?? .defaultParty()
         self.supplies = Supplies()
         self.rng = SplitMix64(seed: seed)
+        self.latestDeathCause = self.party.members.last(where: { !$0.isAlive })?.causeOfDeath
     }
 
     /// Internal state injection keeps deterministic edge-case tests focused without
@@ -56,6 +58,7 @@ public final class Simulation {
         self.supplies = supplies
         self.milesTraveled = milesTraveled
         self.rng = SplitMix64(seed: seed)
+        self.latestDeathCause = self.party.members.last(where: { !$0.isAlive })?.causeOfDeath
     }
 
     public var dateString: String {
@@ -192,6 +195,7 @@ public final class Simulation {
                 party.members[i].isAlive = false
                 let cause = party.members[i].ailment?.rawValue ?? "exposure"
                 party.members[i].causeOfDeath = cause
+                latestDeathCause = cause
                 log.append("\(party.members[i].name) has died of \(cause).")
             }
         }
@@ -247,6 +251,7 @@ public final class Simulation {
                 party.members[index].health = 0
                 party.members[index].ailment = nil
                 party.members[index].causeOfDeath = "drowning"
+                latestDeathCause = "drowning"
                 log.append("The wagon tips in the current. \(party.members[index].name) is lost.")
             } else {
                 log.append("The river is impassable. You wait a day on the bank.")
@@ -500,7 +505,7 @@ public final class Simulation {
     private func checkEndConditions(_ log: inout [String]) {
         if party.isAllDead {
             isFinished = true
-            let cause = party.members.last(where: { !$0.isAlive })?.causeOfDeath ?? "the wilderness"
+            let cause = latestDeathCause ?? "the wilderness"
             outcome = .partyPerished(cause: cause)
             log.append("The trail has taken everyone. The wagons sit still on the prairie.")
         } else if milesTraveled >= Trail.totalMiles {

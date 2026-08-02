@@ -111,6 +111,23 @@ final class SimulationTests: XCTestCase {
         XCTAssertEqual(sim.memorials, ["Ada — cholera"])
     }
 
+    func testPartyOutcomeUsesMostRecentDeathRatherThanMemberOrder() {
+        let party = Party(members: [
+            PartyMember(name: "Ada", health: 1, ailment: .cholera),
+            PartyMember(
+                name: "Bea",
+                health: 0,
+                isAlive: false,
+                causeOfDeath: "typhoid"
+            ),
+        ])
+        let sim = Simulation(seed: 1, party: party, supplies: Supplies())
+
+        sim.tick()
+
+        XCTAssertEqual(sim.outcome, .partyPerished(cause: "cholera"))
+    }
+
     func testRecoveryClearsIllnessEpisodeAge() {
         var observedRecovery = false
 
