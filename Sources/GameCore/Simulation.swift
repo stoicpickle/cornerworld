@@ -111,8 +111,10 @@ public final class Simulation {
         consumeFood(&log)
         applyHealthDecay(&log)
         checkLandmarksCrossed(from: previousMiles, through: travelEndMiles, log: &log)
-        rollEvent(&log)
         checkEndConditions(&log)
+        if !isFinished {
+            rollEvent(&log)
+        }
 
         eventLog.append(contentsOf: log)
         return log

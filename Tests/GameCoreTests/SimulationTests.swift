@@ -111,6 +111,22 @@ final class SimulationTests: XCTestCase {
         XCTAssertEqual(sim.memorials, ["Ada — cholera"])
     }
 
+    func testArrivalEndsBeforeADailyEventCanUndoProgress() {
+        for seed in UInt64(0)..<100 {
+            let sim = Simulation(
+                seed: seed,
+                supplies: Supplies(),
+                milesTraveled: Trail.totalMiles - 1
+            )
+
+            sim.tick()
+
+            XCTAssertEqual(sim.outcome, .reachedOregon, "seed: \(seed)")
+            XCTAssertEqual(sim.milesTraveled, Trail.totalMiles, "seed: \(seed)")
+            XCTAssertEqual(sim.eventLog.count, 2, "seed: \(seed)")
+        }
+    }
+
     func testPartyOutcomeUsesMostRecentDeathRatherThanMemberOrder() {
         let party = Party(members: [
             PartyMember(name: "Ada", health: 1, ailment: .cholera),
