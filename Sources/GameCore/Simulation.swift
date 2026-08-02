@@ -108,8 +108,8 @@ public final class Simulation {
             log.append("You have no oxen. The wagon cannot move.")
         }
 
-        consumeFood(&log)
-        applyHealthDecay(&log)
+        let fullyFed = consumeFood(&log)
+        applyHealthDecay(&log, fullyFed: fullyFed)
         checkLandmarksCrossed(from: previousMiles, through: travelEndMiles, log: &log)
         checkEndConditions(&log)
         if !isFinished {
@@ -122,7 +122,7 @@ public final class Simulation {
 
     // MARK: - Movement
 
-    private func travelDistance() -> Int {
+    func travelDistance() -> Int {
         guard party.aliveCount > 0, supplies.oxen > 0 else { return 0 }
 
         let terrain = Trail.terrain(at: milesTraveled)
@@ -149,49 +149,53 @@ public final class Simulation {
 
     // MARK: - Food
 
-    private func consumeFood(_ log: inout [String]) {
-        guard party.aliveCount > 0 else { return }
+    @discardableResult
+    func consumeFood(_ log: inout [String]) -> Bool {
+        guard party.aliveCount > 0 else { return true }
         let perPerson = ration.poundsPerPersonPerDay
         let needed = perPerson * party.aliveCount
-        supplies.foodPounds -= needed
-        if supplies.foodPounds <= 0 {
-            supplies.foodPounds = 0
+        let fullyFed = supplies.foodPounds >= needed
+        supplies.foodPounds = max(0, supplies.foodPounds - needed)
+        if !fullyFed {
             log.append("The food is gone. The wagons roll on empty stomachs.")
         } else if supplies.foodPounds < 200 {
-            log.append("Supplies run thin. Only \(supplies.foodPounds) lbs of food remain.")
+            if supplies.foodPounds > 0 {
+                log.append("Supplies run thin. Only \(supplies.foodPounds) lbs of food remain.")
+            }
         }
+        return fullyFed
     }
 
     // MARK: - Health
 
-    private func applyHealthDecay(_ log: inout [String]) {
+    func applyHealthDecay(_ log: inout [String], fullyFed: Bool? = nil) {
         guard party.aliveCount > 0 else { return }
         let weatherPenalty = [Weather.Kind.snow, .coldSnap].contains(currentWeather.kind) ? 3 : 0
-        let foodPenalty = supplies.foodPounds == 0 ? 6 : (ration == .bareBones ? 2 : 0)
+        let strandedPenalty = supplies.oxen == 0 ? 5 : 0
+        let dailyRequirement = ration.poundsPerPersonPerDay * party.aliveCount
+        let receivedFullRation = fullyFed ?? (supplies.foodPounds >= dailyRequirement)
+        let nutritionChange = receivedFullRation ? ration.dailyHealthChange : -6
 
         for i in party.members.indices {
             guard party.members[i].isAlive else { continue }
 
+            var recoveryBonus = 0
+            var illnessPenalty = 0
             if let ailment = party.members[i].ailment {
                 party.members[i].daysIll += 1
                 // Ailments run their course; recovery chance grows with time.
                 if recoveryChance(for: ailment, daysIll: party.members[i].daysIll, rng: &rng) {
                     party.members[i].ailment = nil
                     party.members[i].daysIll = 0
-                    party.members[i].health = min(100, party.members[i].health + 15)
+                    recoveryBonus = 15
                     log.append("\(party.members[i].name) shakes off the \(ailment.rawValue).")
-                    continue
-                }
-                let penalty = healthPenalty(for: ailment)
-                party.members[i].health = max(0, party.members[i].health - penalty)
-            } else {
-                let delta = weatherPenalty + foodPenalty
-                if delta > 0 {
-                    party.members[i].health = max(0, party.members[i].health - delta)
                 } else {
-                    party.members[i].health = min(100, party.members[i].health + 2)
+                    illnessPenalty = healthPenalty(for: ailment)
                 }
             }
+
+            let change = recoveryBonus + nutritionChange - weatherPenalty - strandedPenalty - illnessPenalty
+            party.members[i].health = min(100, max(0, party.members[i].health + change))
 
             if party.members[i].health <= 0 {
                 party.members[i].isAlive = false
@@ -247,8 +251,9 @@ public final class Simulation {
                 log.append("The wagons ford the crossing. Everyone makes it across.")
             }
         } else {
-            let drowned = party.members.indices.filter { party.members[$0].isAlive }.randomElement(using: &rng)
-            if let index = drowned {
+            let candidates = party.members.indices.filter { party.members[$0].isAlive }
+            if let choice = rng.index(count: candidates.count) {
+                let index = candidates[choice]
                 party.members[index].isAlive = false
                 party.members[index].health = 0
                 party.members[index].ailment = nil
@@ -288,8 +293,8 @@ public final class Simulation {
         guard log.isEmpty else { return }
         let terrain = Trail.terrain(at: milesTraveled)
         let choices = Self.passiveVignettes(terrain: terrain, weather: currentWeather.kind)
-        if let choice = choices.randomElement(using: &rng) {
-            log.append(choice)
+        if let index = rng.index(count: choices.count) {
+            log.append(choices[index])
         }
     }
 
@@ -345,7 +350,8 @@ public final class Simulation {
 
     private func giveIllness(_ ailment: Ailment, log: inout [String]) {
         let candidates = party.members.indices.filter { party.members[$0].isAlive && party.members[$0].ailment == nil }
-        guard let i = candidates.randomElement(using: &rng) else { return }
+        guard let choice = rng.index(count: candidates.count) else { return }
+        let i = candidates[choice]
         party.members[i].ailment = ailment
         party.members[i].daysIll = 0
         log.append("\(party.members[i].name) has come down with \(ailment.rawValue).")
@@ -415,10 +421,11 @@ public final class Simulation {
         let candidates = party.members.indices.filter {
             party.members[$0].isAlive && party.members[$0].ailment == nil
         }
-        guard let i = candidates.randomElement(using: &rng) else {
+        guard let choice = rng.index(count: candidates.count) else {
             log.append("A rattler circles the camp, but no one is struck.")
             return
         }
+        let i = candidates[choice]
         party.members[i].ailment = .snakebite
         party.members[i].daysIll = 0
         log.append("A rattler strikes at \(party.members[i].name)'s boot. The wound swells.")
@@ -442,7 +449,9 @@ public final class Simulation {
                 log: &log
             )
         case ..<1320:
-            milesTraveled = min(Trail.totalMiles, milesTraveled + 5)
+            for i in party.members.indices where party.members[i].isAlive {
+                party.members[i].health = min(100, party.members[i].health + 5)
+            }
             log.append("Shoshone travelers point out a better route to water.")
         case ..<1890:
             tradeFood(
@@ -479,8 +488,10 @@ public final class Simulation {
         log.append(success)
     }
 
-    private func weatherTurnsBad(log: inout [String]) {
+    func weatherTurnsBad(log: inout [String]) {
         if currentWeather.kind == .clear || currentWeather.kind == .overcast {
+            currentWeather = Weather(kind: .storm, speedFactor: 0.6)
+            weatherFrontDaysRemaining = 2
             log.append("A squall line builds on the horizon. The oxen stamp their feet.")
         } else {
             log.append("The weather worsens. You hunker down and lose ground.")

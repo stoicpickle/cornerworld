@@ -1,0 +1,30 @@
+name: Bug report
+description: Report a reproducible problem in Cornerworld.
+title: "[Bug]: "
+labels: [bug]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What happened?
+      description: Describe the expected and observed behavior.
+    validations:
+      required: true
+  - type: input
+    id: seed
+    attributes:
+      label: Reproduction seed
+      description: Include the displayed 0x-prefixed seed when simulation behavior is involved.
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: macOS version, Mac architecture, and Swift version.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Reproduction steps
+    validations:
+      required: true

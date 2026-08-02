@@ -1,5 +1,6 @@
 import AppKit
 import SpriteKit
+import Darwin
 import GameCore
 
 @MainActor
@@ -22,14 +23,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     // MARK: - Lifecycle
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        simulation = Simulation(seed: launchSeed() ?? UInt64.random(in: 0...UInt64.max))
+        let seed: UInt64
+        switch launchSeed() {
+        case .random:
+            seed = UInt64.random(in: 0...UInt64.max)
+        case .value(let suppliedSeed):
+            seed = suppliedSeed
+        case .missingSeed:
+            fputs("cornerworld: --seed requires a decimal or 0x-prefixed hexadecimal value\n", stderr)
+            NSApplication.shared.terminate(nil)
+            return
+        case .invalid(let value):
+            fputs("cornerworld: invalid --seed value '\(value)'\n", stderr)
+            NSApplication.shared.terminate(nil)
+            return
+        }
+        simulation = Simulation(seed: seed)
         if CommandLine.arguments.contains("--fast") { tickInterval = 0.04 }
         setupWindow()
         setupStatusItem()
         startTicking()
 
         let frame = window.frame
-        print("TrailApp: window at (\(frame.minX), \(frame.minY)) size \(Int(frame.width))x\(Int(frame.height)); statusItem=\(statusItem != nil)")
+        print("Cornerworld: window at (\(frame.minX), \(frame.minY)) size \(Int(frame.width))x\(Int(frame.height)); statusItem=\(statusItem != nil)")
         fflush(stdout)
     }
 
@@ -37,10 +53,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         stopTicking()
     }
 
-    private func launchSeed() -> UInt64? {
-        guard let flag = CommandLine.arguments.firstIndex(of: "--seed"),
-              CommandLine.arguments.indices.contains(flag + 1) else { return nil }
-        return UInt64(CommandLine.arguments[flag + 1])
+    private enum LaunchSeed {
+        case random
+        case value(UInt64)
+        case missingSeed
+        case invalid(String)
+    }
+
+    private func launchSeed() -> LaunchSeed {
+        guard let flag = CommandLine.arguments.firstIndex(of: "--seed") else { return .random }
+        guard CommandLine.arguments.indices.contains(flag + 1) else { return .missingSeed }
+        let value = CommandLine.arguments[flag + 1]
+        guard let seed = SeedCodec.parse(value) else { return .invalid(value) }
+        return .value(seed)
     }
 
     // MARK: - Window
@@ -75,37 +100,43 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private func setupStatusItem() {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         if let button = statusItem.button {
-            button.title = "  🛒"
-            button.image = statusIcon()
+            button.title = ""
             button.imagePosition = .imageLeading
         }
         statusItem.menu = buildStatusMenu()
         updateMenus()
+        updateStatus()
     }
 
-    private func statusIcon() -> NSImage {
-        let size = NSSize(width: 18, height: 16)
+    private func statusIcon(accent: NSColor) -> NSImage {
+        let size = NSSize(width: 20, height: 16)
         let image = NSImage(size: size)
         image.lockFocus()
         let color = NSColor.controlTextColor
 
         // Wagon body
-        let body = NSBezierPath(roundedRect: NSRect(x: 1, y: 5, width: 13, height: 6), xRadius: 1, yRadius: 1)
+        let body = NSBezierPath(roundedRect: NSRect(x: 1, y: 5, width: 14, height: 6), xRadius: 1, yRadius: 1)
         color.setFill()
         body.fill()
 
         // Canvas
-        let canvas = NSBezierPath(roundedRect: NSRect(x: 2.5, y: 10, width: 10, height: 4), xRadius: 1, yRadius: 1)
-        color.withAlphaComponent(0.7).setFill()
+        let canvas = NSBezierPath(roundedRect: NSRect(x: 2.5, y: 10, width: 11, height: 4.5), xRadius: 1.5, yRadius: 1.5)
+        color.withAlphaComponent(0.82).setFill()
         canvas.fill()
 
         // Wheels
-        for x in [3.0, 11.0] {
-            let wheel = NSBezierPath(ovalIn: NSRect(x: x, y: 2, width: 3.5, height: 3.5))
+        for x in [3.0, 11.5] {
+            let wheel = NSBezierPath(ovalIn: NSRect(x: x, y: 1.5, width: 3.5, height: 3.5))
             color.setFill()
             wheel.fill()
         }
+
+        // A compact state light keeps health attached to the world icon rather
+        // than competing with the mileage as a second full-size glyph.
+        accent.setFill()
+        NSBezierPath(ovalIn: NSRect(x: 16, y: 10.5, width: 4, height: 4)).fill()
         image.unlockFocus()
+        image.isTemplate = false
         return image
     }
 
@@ -113,24 +144,32 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let menu = NSMenu()
         menu.delegate = self
 
-        runTitleItem = NSMenuItem(title: "Oregon Trail", action: nil, keyEquivalent: "")
+        runTitleItem = NSMenuItem(title: "Cornerworld — Overland", action: nil, keyEquivalent: "")
         menu.addItem(runTitleItem)
         menu.addItem(.separator())
 
-        let toggle = NSMenuItem(title: "Show / Hide wagon", action: #selector(statusClicked), keyEquivalent: "w")
+        let toggle = NSMenuItem(title: "Show / Hide world", action: #selector(statusClicked), keyEquivalent: "w")
         toggle.target = self
         menu.addItem(toggle)
 
-        let newRun = NSMenuItem(title: "New crossing", action: #selector(startNewRun), keyEquivalent: "n")
+        let newRun = NSMenuItem(title: "New journey", action: #selector(startNewRun), keyEquivalent: "n")
         newRun.target = self
         menu.addItem(newRun)
 
         let pace = NSMenuItem(title: "Pace", action: nil, keyEquivalent: "")
         paceMenu = NSMenu(title: "Pace")
-        for (tag, title) in ["Steady", "Moderate", "Slow"].enumerated() {
+        let paceOptions = [
+            ("Steady", "Adds 3 miles to the terrain's daily base."),
+            ("Moderate", "Uses the terrain's standard daily mileage."),
+            ("Slow", "Subtracts 2 miles from the daily base."),
+            ("Very slow", "Subtracts 6 miles for a genuinely gradual journey."),
+        ]
+        for (tag, option) in paceOptions.enumerated() {
+            let (title, toolTip) = option
             let item = NSMenuItem(title: title, action: #selector(setPace(_:)), keyEquivalent: "")
             item.target = self
             item.tag = tag
+            item.toolTip = toolTip
             paceMenu.addItem(item)
         }
         pace.submenu = paceMenu
@@ -138,10 +177,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         let rations = NSMenuItem(title: "Rations", action: nil, keyEquivalent: "")
         rationMenu = NSMenu(title: "Rations")
-        for (tag, title) in ["Filling", "Meager", "Bare bones"].enumerated() {
+        let rationOptions = [
+            ("Filling — 3 lbs/person", "Restores 2 health per day when conditions permit."),
+            ("Meager — 2 lbs/person", "Maintains health but provides no daily recovery."),
+            ("Bare bones — 1 lb/person", "Costs 2 health per day."),
+        ]
+        for (tag, option) in rationOptions.enumerated() {
+            let (title, toolTip) = option
             let item = NSMenuItem(title: title, action: #selector(setRations(_:)), keyEquivalent: "")
             item.target = self
             item.tag = tag
+            item.toolTip = toolTip
             rationMenu.addItem(item)
         }
         rations.submenu = rationMenu
@@ -188,6 +234,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         simulation.pace = switch sender.tag {
         case 0: .steady
         case 2: .slow
+        case 3: .verySlow
         default: .moderate
         }
         latestEvent = "Pace set to \(simulation.pace.name)."
@@ -252,12 +299,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     private func updateMenus() {
         guard runTitleItem != nil else { return }
-        runTitleItem.title = "OREGON TRAIL  •  SEED \(seedText)"
+        runTitleItem.title = "CORNERWORLD  •  OVERLAND  •  SEED \(seedText)"
 
         let paceTag = switch simulation.pace {
         case .steady: 0
         case .moderate: 1
         case .slow: 2
+        case .verySlow: 3
         }
         for item in paceMenu.items { item.state = item.tag == paceTag ? .on : .off }
 
@@ -280,7 +328,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     private var seedText: String {
-        String(simulation.seed, radix: 16, uppercase: true)
+        SeedCodec.display(simulation.seed)
     }
 
     private func updateStatus() {
@@ -290,21 +338,47 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let alive = simulation.party.aliveCount
         let total = simulation.party.members.count
 
-        var color = NSColor.controlTextColor
+        var accent = NSColor.systemGreen
         if simulation.isFinished {
-            color = simulation.outcome == .reachedOregon ? NSColor.systemGreen : NSColor.systemRed
+            accent = simulation.outcome == .reachedOregon ? NSColor.systemGreen : NSColor.systemRed
         } else if alive < total {
-            color = NSColor.systemOrange
+            accent = NSColor.systemOrange
         } else if simulation.party.averageHealth < 60 {
-            color = NSColor.systemOrange
+            accent = NSColor.systemOrange
         }
 
-        let dot = "●"
-        let title = NSMutableAttributedString(string: "\(dot) \(miles) mi · \(alive)/\(total)")
-        title.addAttribute(.foregroundColor, value: color, range: NSRange(location: 0, length: (dot as NSString).length))
-        title.addAttribute(.foregroundColor, value: NSColor.secondaryLabelColor, range: NSRange(location: (dot as NSString).length, length: title.length - (dot as NSString).length))
+        button.image = statusIcon(accent: accent)
+
+        let milesText = " \(miles) mi"
+        let separator = " · "
+        let partyText = "\(alive)/\(total)"
+        let title = NSMutableAttributedString(string: milesText + separator + partyText)
+        let digitFont = NSFont.monospacedDigitSystemFont(ofSize: 12.5, weight: .medium)
+        title.addAttributes(
+            [.foregroundColor: NSColor.labelColor, .font: digitFont],
+            range: NSRange(location: 0, length: (milesText as NSString).length)
+        )
+        title.addAttributes(
+            [.foregroundColor: NSColor.secondaryLabelColor, .font: digitFont],
+            range: NSRange(
+                location: (milesText as NSString).length,
+                length: (separator as NSString).length
+            )
+        )
+        title.addAttributes(
+            [
+                .foregroundColor: alive < total ? accent : NSColor.secondaryLabelColor,
+                .font: NSFont.monospacedDigitSystemFont(ofSize: 12.5, weight: alive < total ? .semibold : .regular),
+            ],
+            range: NSRange(
+                location: (milesText as NSString).length + (separator as NSString).length,
+                length: (partyText as NSString).length
+            )
+        )
 
         button.attributedTitle = title
-        button.toolTip = "Seed \(seedText)\n\(simulation.dateString)\n\(miles) miles traveled\n\(alive) of \(total) party members alive\n\(simulation.distanceRemaining) miles to Oregon"
+        button.setAccessibilityLabel("Cornerworld Overland status")
+        button.setAccessibilityValue("\(miles) miles traveled; \(alive) of \(total) travelers alive")
+        button.toolTip = "CORNERWORLD — OVERLAND\n\(simulation.dateString)\n\(miles) miles traveled · \(simulation.distanceRemaining) remaining\n\(alive) of \(total) travelers alive\nSeed \(seedText)"
     }
 }

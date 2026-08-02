@@ -1,10 +1,26 @@
 import Foundation
+import Darwin
 import GameCore
 
 let args = CommandLine.arguments
 
+func printHelp() {
+    print("""
+    Cornerworld CLI — run the Overland simulation in a terminal.
+
+    Usage:
+      cornerworld-cli [--seed NUMBER] [--pause SECONDS] [--fast]
+      cornerworld-cli --version
+
+    Options:
+      --seed NUMBER    Reproduce a deterministic journey.
+      --pause SECONDS  Set the delay between simulated days (default: 0.35).
+      --fast           Run with a minimal delay.
+      --version        Print the Cornerworld release version.
+    """)
+}
+
 var seed: UInt64 = UInt64.random(in: 0...UInt64.max)
-var fast = false
 var pauseSeconds: Double = 0.35
 
 var i = 1
@@ -12,15 +28,29 @@ while i < args.count {
     switch args[i] {
     case "--seed":
         i += 1
-        if i < args.count, let s = UInt64(args[i]) { seed = s }
+        guard i < args.count, let parsed = SeedCodec.parse(args[i]) else {
+            fputs("cornerworld-cli: --seed requires a decimal or 0x-prefixed hexadecimal value\n", stderr)
+            exit(2)
+        }
+        seed = parsed
     case "--fast":
-        fast = true
         pauseSeconds = 0.001
     case "--pause":
         i += 1
-        if i < args.count, let p = Double(args[i]) { pauseSeconds = p }
+        guard i < args.count, let parsed = Double(args[i]), parsed >= 0 else {
+            fputs("cornerworld-cli: --pause requires a nonnegative number\n", stderr)
+            exit(2)
+        }
+        pauseSeconds = parsed
+    case "--version":
+        print("Cornerworld 1.0.0")
+        exit(EXIT_SUCCESS)
+    case "--help", "-h":
+        printHelp()
+        exit(EXIT_SUCCESS)
     default:
-        break
+        fputs("cornerworld-cli: unknown option '\(args[i])'; use --help\n", stderr)
+        exit(2)
     }
     i += 1
 }
@@ -34,9 +64,9 @@ let sim = Simulation(seed: seed)
 clearScreen()
 print("""
   ┌──────────────────────────────────────────────┐
-  │   The Oregon Trail — an ambient crossing     │
-  │   seed \(String(seed, radix: 16))                    │
+  │      CORNERWORLD — OVERLAND                   │
   └──────────────────────────────────────────────┘
+  seed \(SeedCodec.display(seed))
 """)
 
 while !sim.isFinished {

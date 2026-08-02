@@ -3,13 +3,64 @@ import XCTest
 
 final class SimulationTests: XCTestCase {
 
+    func testDisplayedSeedsRoundTripAsHexAndDecimalInputStillWorks() {
+        let seed = UInt64.max - 123
+        XCTAssertEqual(SeedCodec.parse(SeedCodec.display(seed)), seed)
+        XCTAssertEqual(SeedCodec.parse("42"), 42)
+        XCTAssertEqual(SeedCodec.parse("0x2A"), 42)
+        XCTAssertNil(SeedCodec.parse("2A"))
+        XCTAssertNil(SeedCodec.parse("not-a-seed"))
+    }
+
+    func testSplitMix64MappingHasAStableGoldenSequence() {
+        var rng = SplitMix64(seed: 42)
+        XCTAssertEqual(rng.next(), 13_679_457_532_755_275_413)
+        XCTAssertEqual(rng.next(), 2_949_826_092_126_892_291)
+        XCTAssertEqual(rng.next(), 5_139_283_748_462_763_858)
+
+        var mapped = SplitMix64(seed: 42)
+        XCTAssertEqual((0..<6).map { _ in mapped.int(in: 0...9) }, [3, 1, 8, 4, 0, 2])
+    }
+
+    func testIntegerMappingHandlesFullWidthRanges() {
+        var negativeRange = SplitMix64(seed: 42)
+        for _ in 0..<100 {
+            let value = negativeRange.int(in: Int.min...0)
+            XCTAssertGreaterThanOrEqual(value, Int.min)
+            XCTAssertLessThanOrEqual(value, 0)
+        }
+
+        var fullRange = SplitMix64(seed: 42)
+        for _ in 0..<100 {
+            let value = fullRange.int(in: Int.min...Int.max)
+            XCTAssertGreaterThanOrEqual(value, Int.min)
+            XCTAssertLessThanOrEqual(value, Int.max)
+        }
+    }
+
+    func testDoubleMappingKeepsExtremeFiniteRangesFinite() {
+        var rng = SplitMix64(seed: 42)
+        for _ in 0..<100 {
+            let value = rng.double(in: -Double.greatestFiniteMagnitude...Double.greatestFiniteMagnitude)
+            XCTAssertTrue(value.isFinite)
+            XCTAssertGreaterThanOrEqual(value, -Double.greatestFiniteMagnitude)
+            XCTAssertLessThanOrEqual(value, Double.greatestFiniteMagnitude)
+        }
+    }
+
     func testDeterministicRuns() {
         let a = Simulation(seed: 42)
         let b = Simulation(seed: 42)
 
-        while !a.isFinished { a.tick() }
-        while !b.isFinished { b.tick() }
+        var guardDays = 0
+        while !a.isFinished, guardDays < 1000 {
+            a.tick()
+            b.tick()
+            guardDays += 1
+        }
 
+        XCTAssertTrue(a.isFinished)
+        XCTAssertTrue(b.isFinished)
         XCTAssertEqual(a.day, b.day)
         XCTAssertEqual(a.outcome, b.outcome)
         XCTAssertEqual(a.eventLog, b.eventLog)
@@ -19,9 +70,15 @@ final class SimulationTests: XCTestCase {
         let a = Simulation(seed: 42)
         let b = Simulation(seed: 43)
 
-        while !a.isFinished { a.tick() }
-        while !b.isFinished { b.tick() }
+        var guardDays = 0
+        while (!a.isFinished || !b.isFinished), guardDays < 1000 {
+            if !a.isFinished { a.tick() }
+            if !b.isFinished { b.tick() }
+            guardDays += 1
+        }
 
+        XCTAssertTrue(a.isFinished)
+        XCTAssertTrue(b.isFinished)
         XCTAssertNotEqual(a.eventLog, b.eventLog)
     }
 
@@ -52,6 +109,73 @@ final class SimulationTests: XCTestCase {
         }
     }
 
+    func testRationLevelsTradeFoodForDailyHealth() {
+        func health(after ration: Ration, food: Int = 100) -> Int {
+            let party = Party(members: [PartyMember(name: "Ada", health: 80)])
+            let sim = Simulation(
+                seed: 1,
+                party: party,
+                supplies: Supplies(foodPounds: food)
+            )
+            sim.ration = ration
+            var log: [String] = []
+            sim.applyHealthDecay(&log)
+            return sim.party.members[0].health
+        }
+
+        XCTAssertEqual(health(after: .filling), 82)
+        XCTAssertEqual(health(after: .meager), 80)
+        XCTAssertEqual(health(after: .bareBones), 78)
+        XCTAssertEqual(health(after: .filling, food: 0), 74)
+    }
+
+    func testExactDailyRationFeedsThePartyButPartialRationDoesNot() {
+        func result(startingFood: Int) -> (health: Int, food: Int, fullyFed: Bool) {
+            let party = Party(members: [PartyMember(name: "Ada", health: 80)])
+            let sim = Simulation(
+                seed: 1,
+                party: party,
+                supplies: Supplies(foodPounds: startingFood)
+            )
+            sim.ration = .filling
+            var log: [String] = []
+            let fullyFed = sim.consumeFood(&log)
+            sim.applyHealthDecay(&log, fullyFed: fullyFed)
+            return (sim.party.members[0].health, sim.supplies.foodPounds, fullyFed)
+        }
+
+        let exact = result(startingFood: 3)
+        XCTAssertEqual(exact.health, 82)
+        XCTAssertEqual(exact.food, 0)
+        XCTAssertTrue(exact.fullyFed)
+
+        let partial = result(startingFood: 2)
+        XCTAssertEqual(partial.health, 74)
+        XCTAssertEqual(partial.food, 0)
+        XCTAssertFalse(partial.fullyFed)
+    }
+
+    func testRecoveryStillPaysStarvationPenalty() {
+        var observedRecovery = false
+
+        for seed in UInt64(0)..<100 {
+            let party = Party(members: [
+                PartyMember(name: "Ada", health: 80, ailment: .exhaustion, daysIll: 20),
+            ])
+            let sim = Simulation(seed: seed, party: party, supplies: Supplies(foodPounds: 0))
+            var log: [String] = []
+            sim.applyHealthDecay(&log, fullyFed: false)
+
+            if log.contains(where: { $0.contains("shakes off") }) {
+                observedRecovery = true
+                XCTAssertEqual(sim.party.members[0].health, 89)
+                break
+            }
+        }
+
+        XCTAssertTrue(observedRecovery)
+    }
+
     func testZeroOxenCannotAdvance() {
         let sim = Simulation(
             seed: 1,
@@ -63,6 +187,34 @@ final class SimulationTests: XCTestCase {
 
         XCTAssertEqual(sim.milesTraveled, 100)
         XCTAssertTrue(log.contains("You have no oxen. The wagon cannot move."))
+    }
+
+    func testZeroOxenEventuallyEndsTheJourney() {
+        let sim = Simulation(
+            seed: 7,
+            party: Party(members: [PartyMember(name: "Ada", health: 20)]),
+            supplies: Supplies(foodPounds: 500, oxen: 0)
+        )
+
+        for _ in 0..<30 where !sim.isFinished {
+            sim.tick()
+        }
+
+        XCTAssertTrue(sim.isFinished)
+        XCTAssertEqual(sim.outcome, .partyPerished(cause: "exposure"))
+    }
+
+    func testVerySlowPaceMateriallyReducesDailyTravel() {
+        func distance(at pace: Pace) -> Int {
+            let sim = Simulation(seed: 1, supplies: Supplies())
+            sim.pace = pace
+            return sim.travelDistance()
+        }
+
+        XCTAssertEqual(distance(at: .steady), 17)
+        XCTAssertEqual(distance(at: .moderate), 14)
+        XCTAssertEqual(distance(at: .slow), 12)
+        XCTAssertEqual(distance(at: .verySlow), 8)
     }
 
     func testCrossedCheckpointsAreNotSkippedByDailyTravel() {
@@ -341,10 +493,17 @@ final class SimulationTests: XCTestCase {
     }
 
     func testRegionalEncountersChangeAlongTheTrail() {
-        let mountain = Simulation(seed: 1, supplies: Supplies(), milesTraveled: 900)
+        let mountainParty = Party(members: [PartyMember(name: "Ada", health: 80)])
+        let mountain = Simulation(
+            seed: 1,
+            party: mountainParty,
+            supplies: Supplies(),
+            milesTraveled: 900
+        )
         var mountainLog: [String] = []
         mountain.regionalTrade(log: &mountainLog)
-        XCTAssertEqual(mountain.milesTraveled, 905)
+        XCTAssertEqual(mountain.milesTraveled, 900)
+        XCTAssertEqual(mountain.party.members[0].health, 85)
         XCTAssertTrue(mountainLog[0].contains("Shoshone"))
 
         let columbia = Simulation(seed: 1, supplies: Supplies(cash: 0), milesTraveled: 1900)
@@ -374,5 +533,16 @@ final class SimulationTests: XCTestCase {
         XCTAssertTrue(gainedSomething)
         XCTAssertEqual(log.count, 1)
         XCTAssertLessThanOrEqual(log[0].count, 68)
+    }
+
+    func testBadWeatherEventStartsAStormFront() {
+        let sim = Simulation(seed: 1, supplies: Supplies())
+        var log: [String] = []
+
+        sim.weatherTurnsBad(log: &log)
+
+        XCTAssertEqual(sim.currentWeather.kind, .storm)
+        XCTAssertEqual(sim.weatherFrontDaysRemainingForTesting, 2)
+        XCTAssertTrue(log[0].contains("squall"))
     }
 }

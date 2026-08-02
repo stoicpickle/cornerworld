@@ -1,0 +1,33 @@
+name: Scenario proposal
+description: Propose another small ambient world for Cornerworld.
+title: "[Scenario]: "
+labels: [scenario]
+body:
+  - type: textarea
+    id: premise
+    attributes:
+      label: Premise and slow-running loop
+      description: What continues while the world sits in the desktop corner?
+    validations:
+      required: true
+  - type: textarea
+    id: choices
+    attributes:
+      label: Meaningful choices
+      description: Which occasional decisions belong in the compact menu?
+    validations:
+      required: true
+  - type: textarea
+    id: visual
+    attributes:
+      label: Corner-scale visual language
+      description: How will this remain legible and distinctive at 320×200?
+    validations:
+      required: true
+  - type: textarea
+    id: boundary
+    attributes:
+      label: Shared boundary learned
+      description: What would this reveal that Overland alone cannot teach us?
+    validations:
+      required: true

@@ -2,12 +2,12 @@
 import PackageDescription
 
 let package = Package(
-    name: "oregontrail",
+    name: "Cornerworld",
     platforms: [.macOS(.v13)],
     products: [
         .library(name: "GameCore", targets: ["GameCore"]),
-        .executable(name: "trail-cli", targets: ["GameCLI"]),
-        .executable(name: "TrailApp", targets: ["TrailApp"]),
+        .executable(name: "cornerworld-cli", targets: ["GameCLI"]),
+        .executable(name: "cornerworld", targets: ["TrailApp"]),
     ],
     targets: [
         .target(name: "GameCore"),

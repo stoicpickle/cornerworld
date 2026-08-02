@@ -42,6 +42,14 @@ public enum Ration {
         }
     }
 
+    public var dailyHealthChange: Int {
+        switch self {
+        case .filling: return 2
+        case .meager: return 0
+        case .bareBones: return -2
+        }
+    }
+
     public var name: String {
         switch self {
         case .filling: return "filling"
@@ -55,12 +63,14 @@ public enum Pace {
     case steady
     case moderate
     case slow
+    case verySlow
 
     public var milesPerDayBonus: Int {
         switch self {
         case .steady: return 3
         case .moderate: return 0
         case .slow: return -2
+        case .verySlow: return -6
         }
     }
 
@@ -69,6 +79,7 @@ public enum Pace {
         case .steady: return "steady"
         case .moderate: return "moderate"
         case .slow: return "slow"
+        case .verySlow: return "very slow"
         }
     }
 }
