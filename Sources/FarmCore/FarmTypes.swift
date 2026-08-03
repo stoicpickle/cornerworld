@@ -32,6 +32,19 @@ public enum FarmPlan: String, CaseIterable, Equatable, Sendable {
     case fallow
 }
 
+/// A short-lived, typed presentation cue for the most important event on a
+/// weekly tick. The simulation owns the meaning; renderers decide how it looks.
+public enum FarmVisualEvent: Equatable, Sendable {
+    case weeds
+    case crows
+    case deer
+    case neighborProvisions(food: Int)
+    case windDamage
+    case repairDay(points: Int)
+    case harvest(plan: FarmPlan, totalYield: Int)
+    case yearEnd(outcome: FarmOutcome, paid: Int)
+}
+
 public struct HarvestReport: Equatable, Sendable {
     public let plan: FarmPlan
     public let baseYield: Int
@@ -92,6 +105,7 @@ public struct FarmState: Equatable, Sendable {
     public var cropGrowth: Int
     public var cropStage: CropStage
     public var currentWeather: FarmWeather?
+    public var latestVisualEvent: FarmVisualEvent?
     public var eventLog: [String]
     public var harvestReport: HarvestReport?
     public var outcome: FarmOutcome?
@@ -111,6 +125,7 @@ public struct FarmState: Equatable, Sendable {
         self.cropGrowth = 0
         self.cropStage = .bare
         self.currentWeather = nil
+        self.latestVisualEvent = nil
         self.eventLog = []
         self.harvestReport = nil
         self.outcome = nil

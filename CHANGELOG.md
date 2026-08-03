@@ -16,6 +16,8 @@ Cornerworld follows [Semantic Versioning](https://semver.org/).
   and a repeatable acceptance matrix.
 - Reachable stable, strained, and debt Farm endings, explicit new-farm plan
   controls, and cleanup for completed child-world processes.
+- Typed Farm event visuals for weeds, crows, deer, neighbor provisions, wind
+  damage, repair days, harvest, and the year-end result.
 
 ## 1.1.0 — 2026-08-03
 

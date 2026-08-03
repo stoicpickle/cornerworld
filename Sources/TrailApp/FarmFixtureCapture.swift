@@ -10,6 +10,22 @@ enum FarmFixtureCapture {
         let filename: String
         let plan: FarmPlan
         let week: Int
+        let visualEvent: FarmVisualEvent?
+        let message: String?
+
+        init(
+            filename: String,
+            plan: FarmPlan,
+            week: Int,
+            visualEvent: FarmVisualEvent? = nil,
+            message: String? = nil
+        ) {
+            self.filename = filename
+            self.plan = plan
+            self.week = week
+            self.visualEvent = visualEvent
+            self.message = message
+        }
     }
 
     private enum CaptureError: LocalizedError {
@@ -40,10 +56,18 @@ enum FarmFixtureCapture {
         Fixture(filename: "farm-autumn-harvested.png", plan: .wheat, week: 33),
         Fixture(filename: "farm-winter-snow.png", plan: .wheat, week: 40),
         Fixture(filename: "farm-adverse-late-frost.png", plan: .wheat, week: 10),
+        Fixture(filename: "farm-event-weeds.png", plan: .wheat, week: 18, visualEvent: .weeds, message: "Weeds crowded a row before they could be cut back."),
+        Fixture(filename: "farm-event-crows.png", plan: .wheat, week: 8, visualEvent: .crows, message: "Crows pulled at the young crop."),
+        Fixture(filename: "farm-event-deer.png", plan: .wheat, week: 20, visualEvent: .deer, message: "Deer watched from the field edge."),
+        Fixture(filename: "farm-event-neighbor.png", plan: .beans, week: 8, visualEvent: .neighborProvisions(food: 4), message: "A neighbor left a basket with 4 food."),
+        Fixture(filename: "farm-event-wind-damage.png", plan: .wheat, week: 30, visualEvent: .windDamage, message: "A hard wind bent the outer rows."),
+        Fixture(filename: "farm-event-repair-day.png", plan: .wheat, week: 44, visualEvent: .repairDay(points: 7), message: "A clear repair day restored the barn."),
+        Fixture(filename: "farm-event-harvest.png", plan: .wheat, week: 33, visualEvent: .harvest(plan: .wheat, totalYield: 38), message: "The wheat harvest is brought in."),
+        Fixture(filename: "farm-event-year-end.png", plan: .fallow, week: 52, visualEvent: .yearEnd(outcome: .debt, paid: 28), message: "The farm ends the year in debt."),
     ]
 
-    /// Writes six deterministic 320x200 PNGs and returns their URLs in seasonal
-    /// order. A fixed seed keeps visual diffs meaningful across renderer changes.
+    /// Writes deterministic 320x200 seasonal and event PNGs. A fixed seed keeps
+    /// visual diffs meaningful across renderer changes.
     static func writeFixtures(to outputDirectory: URL) throws -> [URL] {
         try FileManager.default.createDirectory(
             at: outputDirectory,
@@ -57,9 +81,14 @@ enum FarmFixtureCapture {
                 latestEvent = simulation.tick().last ?? latestEvent
             }
 
+            var fixtureState = simulation.state
+            fixtureState.latestVisualEvent = fixture.visualEvent ?? fixtureState.latestVisualEvent
+            if case .repairDay? = fixture.visualEvent {
+                fixtureState.buildingCondition = 55
+            }
             let snapshot = FarmPresentationSnapshot(
-                state: simulation.state,
-                latestEvent: latestEvent,
+                state: fixtureState,
+                latestEvent: fixture.message ?? latestEvent,
                 revision: fixture.week
             )
             let scene = FarmScene(snapshot: snapshot)

@@ -248,4 +248,107 @@ final class FarmSimulationTests: XCTestCase {
         XCTAssertNotNil(simulation.harvestReport)
         XCTAssertEqual(simulation.cropStage, .resting)
     }
+
+    func testEveryFarmVisualEventIsReachableAcrossSeededYears() {
+        var observed: Set<String> = []
+
+        for seed in UInt64(0)..<250 {
+            for plan in FarmPlan.allCases {
+                var simulation = FarmSimulation(seed: seed, plan: plan)
+                while !simulation.isFinished {
+                    simulation.tick()
+                    if let event = simulation.latestVisualEvent {
+                        observed.insert(eventKey(event))
+                    }
+                }
+            }
+        }
+
+        XCTAssertEqual(observed, [
+            "weeds", "crows", "deer", "neighbor", "wind",
+            "repair", "harvest", "yearEnd",
+        ])
+    }
+
+    func testFarmVisualEventsStayAlignedWithTheDisplayedMessage() {
+        var matched: Set<String> = []
+
+        for seed in UInt64(0)..<100 {
+            for plan in FarmPlan.allCases {
+                var simulation = FarmSimulation(seed: seed, plan: plan)
+                while !simulation.isFinished {
+                    let messages = simulation.tick()
+                    guard let event = simulation.latestVisualEvent else { continue }
+                    let message = messages.last ?? ""
+                    XCTAssertTrue(
+                        visualEvent(event, matches: message),
+                        "event \(event) did not match final message: \(message)"
+                    )
+                    matched.insert(eventKey(event))
+                }
+            }
+        }
+
+        XCTAssertEqual(matched, [
+            "weeds", "crows", "deer", "neighbor", "wind",
+            "repair", "harvest", "yearEnd",
+        ])
+    }
+
+    func testFarmVisualEventContractIsEquatableAndSendable() {
+        func requireSendable<T: Sendable>(_: T.Type) {}
+        requireSendable(FarmVisualEvent.self)
+
+        XCTAssertEqual(FarmVisualEvent.weeds, .weeds)
+        XCTAssertNotEqual(FarmVisualEvent.weeds, .crows)
+        XCTAssertEqual(
+            FarmVisualEvent.harvest(plan: .beans, totalYield: 31),
+            .harvest(plan: .beans, totalYield: 31)
+        )
+    }
+
+    func testFarmVisualEventClearsOnAQuietWeek() {
+        var simulation = FarmSimulation(seed: 7, plan: .wheat)
+        var sawEvent = false
+        var sawQuietWeekAfterEvent = false
+
+        while !simulation.isFinished {
+            simulation.tick()
+            if simulation.latestVisualEvent != nil {
+                sawEvent = true
+            } else if sawEvent {
+                sawQuietWeekAfterEvent = true
+                break
+            }
+        }
+
+        XCTAssertTrue(sawEvent)
+        XCTAssertTrue(sawQuietWeekAfterEvent)
+    }
+
+    private func eventKey(_ event: FarmVisualEvent) -> String {
+        switch event {
+        case .weeds: "weeds"
+        case .crows: "crows"
+        case .deer: "deer"
+        case .neighborProvisions: "neighbor"
+        case .windDamage: "wind"
+        case .repairDay: "repair"
+        case .harvest: "harvest"
+        case .yearEnd: "yearEnd"
+        }
+    }
+
+    private func visualEvent(_ event: FarmVisualEvent, matches message: String) -> Bool {
+        switch event {
+        case .weeds: message.contains("Weeds crowded")
+        case .crows: message.contains("Crows dropped")
+        case .deer: message.contains("Deer watched")
+        case .neighborProvisions: message.contains("neighbor left")
+        case .windDamage: message.contains("hard wind bent")
+        case .repairDay: message.contains("clear repair day")
+        case .harvest: message.contains("Harvest")
+        case .yearEnd: message.contains("farm ends the year")
+        }
+    }
 }

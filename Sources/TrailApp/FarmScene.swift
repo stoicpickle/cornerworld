@@ -15,6 +15,7 @@ struct FarmPresentationSnapshot {
     let buildingCondition: Int
     let cropStage: CropStage
     let weather: FarmWeather?
+    let visualEvent: FarmVisualEvent?
     let message: String
     let outcome: FarmOutcome?
 
@@ -32,6 +33,7 @@ struct FarmPresentationSnapshot {
         buildingCondition = state.buildingCondition
         cropStage = state.cropStage
         weather = state.currentWeather
+        visualEvent = state.latestVisualEvent
         message = latestEvent
         outcome = state.outcome
     }
@@ -96,6 +98,7 @@ final class FarmScene: SKScene {
         drawBarn(season: snapshot.season, condition: snapshot.buildingCondition)
         drawTree(season: snapshot.season)
         drawWeather(snapshot: snapshot, palette: palette)
+        drawEvent(snapshot.visualEvent, palette: palette)
         drawPanel(snapshot: snapshot)
     }
 
@@ -303,6 +306,124 @@ final class FarmScene: SKScene {
         case .thaw:
             for index in 0..<9 {
                 addRect(x: CGFloat(25 + index * 34), y: CGFloat(75 + index % 3 * 5), width: 12, height: 2, color: color(0.06, 0.34, 0.62), z: 20)
+            }
+        }
+    }
+
+    // MARK: - Event vignettes
+
+    private func drawEvent(_ event: FarmVisualEvent?, palette: Palette) {
+        guard let event else { return }
+        let ink = color(0.06, 0.05, 0.04)
+        let white = color(0.96, 0.96, 0.92)
+        let brown = color(0.43, 0.20, 0.05)
+        let orange = color(1.00, 0.38, 0.00)
+        let green = color(0.08, 0.42, 0.04)
+        let eventPalette: [Character: NSColor] = [
+            "K": ink, "W": white, "B": brown, "O": orange,
+            "G": green, "C": palette.crop, "S": palette.soil,
+        ]
+
+        switch event {
+        case .weeds:
+            for offset in [0, 66, 137] {
+                drawPixels(
+                    ["K.K.K", ".KKK.", "..K..", ".K.K."],
+                    palette: eventPalette, scale: 3,
+                    x: CGFloat(45 + offset), y: CGFloat(82 + offset % 17), z: 31
+                )
+            }
+        case .crows:
+            drawPixels(
+                ["K...K.....K...K", ".K.K.......K.K.", "..K.........K.."],
+                palette: eventPalette, scale: 2, x: 126, y: 168, z: 31
+            )
+            drawPixels(
+                ["K...K", ".K.K.", "..K.."],
+                palette: eventPalette, scale: 2, x: 211, y: 157, z: 31
+            )
+        case .deer:
+            drawPixels(
+                ["....B..B.", "....BBBB.", "BBBBBBB..", ".BBBB....", ".B..B....", ".B..B...."],
+                palette: eventPalette, scale: 3, x: 133, y: 125, z: 31
+            )
+            drawPixels(
+                ["...B.B", "...BBB", "BBBB..", ".BBB..", ".B.B.."],
+                palette: eventPalette, scale: 3, x: 179, y: 127, z: 31
+            )
+        case .neighborProvisions:
+            drawPixels(
+                [".OO.", ".OO.", "WWWW", ".BB.", ".BB.", "B..B"],
+                palette: eventPalette, scale: 3, x: 84, y: 123, z: 32
+            )
+            drawPixels(
+                ["BBBBB", "BOOOB", "BBBBB"],
+                palette: eventPalette, scale: 3, x: 101, y: 122, z: 32
+            )
+        case .windDamage:
+            for offset in stride(from: 0, through: 165, by: 55) {
+                drawPixels(
+                    ["....B", "...B.", "..B..", ".B...", "B...."],
+                    palette: eventPalette, scale: 3,
+                    x: CGFloat(55 + offset), y: CGFloat(84 + offset % 17), z: 31
+                )
+            }
+            drawPixels(
+                ["OOO....OOO", "...OOO....", "......OO.."],
+                palette: eventPalette, scale: 2, x: 108, y: 172, z: 32
+            )
+        case .repairDay:
+            drawPixels(
+                ["W.....W", ".W...W.", ".W...W.", "..W.W..", "..W.W..", "...W..."],
+                palette: eventPalette, scale: 3, x: 222, y: 125, z: 32
+            )
+            drawPixels(
+                [".OO.", ".OO.", "WWWW", ".BB.", "B..B"],
+                palette: eventPalette, scale: 3, x: 207, y: 122, z: 33
+            )
+            drawPixels(["KKK", ".K.", ".B."], palette: eventPalette, scale: 3, x: 235, y: 150, z: 34)
+        case .harvest(let plan, _):
+            let load = plan == .beans ? "O" : "C"
+            drawPixels(
+                ["..\(load)\(load)\(load)\(load)...", ".\(load)\(load)\(load)\(load)\(load)\(load)..", "BBBBBBBB", "B......B", ".K....K."],
+                palette: eventPalette, scale: 3, x: 137, y: 98, z: 32
+            )
+            drawPixels(
+                [".OO.", ".OO.", "WWWW", ".BB.", "B..B"],
+                palette: eventPalette, scale: 3, x: 116, y: 102, z: 33
+            )
+        case .yearEnd:
+            drawPixels(
+                [".WWWW.", "WW..WW", "W....W", "W.KK.W", ".WWWW."],
+                palette: eventPalette, scale: 3, x: 86, y: 124, z: 32
+            )
+            drawPixels(
+                ["BBBBB", "B...B", "B...B", "BBBBB"],
+                palette: eventPalette, scale: 3, x: 110, y: 123, z: 31
+            )
+        }
+    }
+
+    private func drawPixels(
+        _ rows: [String],
+        palette: [Character: NSColor],
+        scale: CGFloat,
+        x: CGFloat,
+        y: CGFloat,
+        z: CGFloat
+    ) {
+        for (rowIndex, row) in rows.enumerated() {
+            let rowY = y + CGFloat(rows.count - rowIndex - 1) * scale
+            for (column, character) in row.enumerated() {
+                guard let pixelColor = palette[character] else { continue }
+                addRect(
+                    x: x + CGFloat(column) * scale,
+                    y: rowY,
+                    width: scale,
+                    height: scale,
+                    color: pixelColor,
+                    z: z
+                )
             }
         }
     }

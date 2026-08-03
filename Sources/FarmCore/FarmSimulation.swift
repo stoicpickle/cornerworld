@@ -51,6 +51,7 @@ public struct FarmSimulation: Equatable, Sendable {
     public var cropGrowth: Int { state.cropGrowth }
     public var cropStage: CropStage { state.cropStage }
     public var currentWeather: FarmWeather? { state.currentWeather }
+    public var latestVisualEvent: FarmVisualEvent? { state.latestVisualEvent }
     public var eventLog: [String] { state.eventLog }
     public var harvestReport: HarvestReport? { state.harvestReport }
     public var outcome: FarmOutcome? { state.outcome }
@@ -59,6 +60,8 @@ public struct FarmSimulation: Equatable, Sendable {
     @discardableResult
     public mutating func tick() -> [String] {
         guard !state.isFinished else { return [] }
+
+        state.latestVisualEvent = nil
 
         state.week += 1
         state.season = Self.season(for: state.week)
@@ -198,16 +201,35 @@ public struct FarmSimulation: Equatable, Sendable {
            eventRNG.chance(8) {
             state.cropGrowth -= 3
             weatherDamage += 1
+            state.latestVisualEvent = .weeds
             messages.append("Weeds crowded a row before they could be cut back.")
         }
 
+        if (state.season == .spring || state.season == .summer),
+           state.plan != .fallow,
+           eventRNG.chance(5) {
+            state.cropGrowth -= 2
+            weatherDamage += 1
+            state.latestVisualEvent = .crows
+            messages.append("Crows dropped into the field and pulled at the young crop.")
+        }
+
         if state.season == .summer, eventRNG.chance(7) {
+            state.latestVisualEvent = .deer
             messages.append("Deer watched from the field edge, then slipped into the trees.")
+        }
+
+        if state.season == .spring, state.weekOfSeason == 8, eventRNG.chance(55) {
+            let food = 4
+            state.storedFood += food
+            state.latestVisualEvent = .neighborProvisions(food: food)
+            messages.append("A neighbor left a basket with \(food) food for the household.")
         }
 
         if state.season == .autumn, state.weekOfSeason < 7, eventRNG.chance(6) {
             state.cropGrowth -= 2
             weatherDamage += 1
+            state.latestVisualEvent = .windDamage
             messages.append("A hard wind bent the outer rows.")
         }
 
@@ -217,6 +239,7 @@ public struct FarmSimulation: Equatable, Sendable {
             if repair > 0, state.cash >= cost {
                 state.buildingCondition += repair
                 state.cash -= cost
+                state.latestVisualEvent = .repairDay(points: repair)
                 messages.append("A clear repair day restored \(repair) points of building condition for $\(cost).")
             }
         }
@@ -272,6 +295,7 @@ public struct FarmSimulation: Equatable, Sendable {
             soilChange: soilChange,
             summary: summary
         )
+        state.latestVisualEvent = .harvest(plan: state.plan, totalYield: total)
         messages.append(summary)
     }
 
@@ -337,6 +361,7 @@ public struct FarmSimulation: Equatable, Sendable {
         }
         state.outcome = result
         state.isFinished = true
+        state.latestVisualEvent = .yearEnd(outcome: result, paid: paid)
         messages.append("The farm ends the year \(result.rawValue): \(state.storedFood) food, $\(state.cash), buildings \(state.buildingCondition).")
     }
 

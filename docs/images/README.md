@@ -6,5 +6,7 @@ content or private information.
 
 - `farm-summer-mature.png` and `farm-winter-snow.png` come from the process-owned
   Farm fixture capture for seed 1848.
+- `farm-event-deer.png` and `farm-event-repair-day.png` show two fixtures from
+  the typed Farm event-visual contract.
 - `overland-wolves.png` and `overland-snakebite.png` come from the deterministic
   seed 7 Overland event proof run.

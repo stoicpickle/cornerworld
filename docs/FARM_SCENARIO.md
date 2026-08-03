@@ -31,8 +31,8 @@ At the start of spring, choose one field plan:
 
 The world then advances mostly on its own. Weekly weather changes moisture and
 growth. A few authored events create texture without interrupting every tick:
-gentle rain, a dry spell, late frost, weeds, wind damage, a useful repair day,
-and wildlife at the field edge.
+gentle rain, a dry spell, late frost, weeds, crows, wind damage, a neighbor's
+provisions, a useful repair day, and wildlife at the field edge.
 
 The first-year state stays deliberately small:
 
@@ -58,6 +58,10 @@ rather than horizontal travel:
   and snow cover;
 - short event animations inside the world area, with the existing message strip
   and compact status panel remaining readable.
+
+Important weekly events use a typed presentation cue so the scene and final
+message stay aligned. The first visual pack covers weeds, crows, deer, neighbor
+provisions, wind-damaged rows, repair work, harvest, and the year-end result.
 
 Spring begins dark and wet, summer becomes green and full, autumn shifts toward
 orange and gold, and winter reduces the scene to black, white, and blue. Weather
@@ -112,6 +116,8 @@ The first playable farm is successful when:
 - the same seed and field plan produce the same year and event log;
 - wheat, beans, and fallow lead to materially different harvest and soil states;
 - the crop and season are recognizable without reading the status panel;
+- every authored visual event is reachable in deterministic seeded years and
+  agrees with the event message being displayed;
 - the player can explain why the harvest was strong or weak;
 - a full year completes without intervention, while one spring decision still
   matters at harvest;

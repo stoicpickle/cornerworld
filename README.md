@@ -22,6 +22,13 @@ harvest, and winter pressure rendered as a fixed seasonal homestead.
 | --- | --- |
 | ![A mature wheat field outside the Cornerworld farmhouse and barn](docs/images/farm-summer-mature.png) | ![The Cornerworld farm resting beneath winter snow](docs/images/farm-winter-snow.png) |
 
+Farm's weekly story now appears in the field itself, including wildlife, crop
+trouble, neighbor visits, repair work, harvest, and the year-end result.
+
+| Deer at the field edge | A winter repair day |
+| --- | --- |
+| ![Deer watching from the edge of the Farm field](docs/images/farm-event-deer.png) | ![A worker repairing the Farm barn during winter](docs/images/farm-event-repair-day.png) |
+
 Overland now gives important events their own deterministic pixel-art
 vignettes instead of reporting every encounter through text alone.
 
@@ -132,7 +139,8 @@ swift test -c release
 swift build -c release
 ```
 
-Farm's process-owned visual proof does not require Screen Recording permission:
+Farm's process-owned seasonal and event visual proof does not require Screen
+Recording permission:
 
 ```sh
 swift run cornerworld --capture-farm-fixtures .build/visual-proof/farm
