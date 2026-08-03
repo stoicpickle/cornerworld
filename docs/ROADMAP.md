@@ -14,9 +14,10 @@ surface, deterministic continuity, and occasional meaningful intervention.
 
 ## The second-world test
 
-A farm is the leading candidate for a second scenario because it changes the
-time scale, resources, visual grammar, and meaning of continuity. Building it
-would reveal which pieces genuinely belong to Cornerworld rather than Overland.
+A farm is now the working second scenario. It changes the time scale, resources,
+visual grammar, and meaning of continuity, giving the project two concrete
+implementations to compare. Its design and delivery slices are captured in the
+[Farm scenario proposal](FARM_SCENARIO.md).
 
 Only after two working scenarios should the project extract a shared scenario
 protocol for:

@@ -1,52 +1,98 @@
 import AppKit
+import DesktopHostCore
 import Darwin
-import GameCore
 
 let launchArguments = Array(CommandLine.arguments.dropFirst())
 
 func printDesktopHelp() {
     print("""
-    Cornerworld — run the Overland world on your macOS desktop.
+    Cornerworld — run a tiny living world on your macOS desktop.
 
     Usage:
-      cornerworld [--seed NUMBER] [--fast]
+      cornerworld [--world overland|farm] [--seed NUMBER] [--plan wheat|beans|fallow] [--fast]
+      cornerworld --capture-farm-fixtures DIRECTORY
+      cornerworld --capture-menu-bar-fixtures DIRECTORY
       cornerworld --version
 
     Options:
-      --seed NUMBER  Reproduce a deterministic journey (decimal or 0x-prefixed hex).
-      --fast         Advance days rapidly for development.
-      --help, -h     Print this help text without launching the app.
-      --version      Print the Cornerworld release version.
+      --world WORLD   Open Overland or Farm (default: overland).
+      --seed NUMBER   Reproduce a deterministic world (decimal or 0x-prefixed hex).
+      --plan PLAN     Start Farm with wheat, beans, or fallow (Farm only; default: wheat).
+      --fast          Advance time rapidly for development.
+      --capture-farm-fixtures DIRECTORY
+                      Write deterministic 320x200 Farm PNGs without launching a window.
+      --capture-menu-bar-fixtures DIRECTORY
+                      Write isolated light/dark status-item PNGs without capturing the desktop.
+      --help, -h      Print this help text without launching the app.
+      --version       Print the Cornerworld release version.
     """)
 }
 
-var argumentIndex = 0
-while argumentIndex < launchArguments.count {
-    switch launchArguments[argumentIndex] {
-    case "--seed":
-        argumentIndex += 1
-        guard argumentIndex < launchArguments.count,
-              SeedCodec.parse(launchArguments[argumentIndex]) != nil else {
-            fputs("cornerworld: --seed requires a decimal or 0x-prefixed hexadecimal value\n", stderr)
-            exit(2)
+let launchOptions: DesktopLaunchOptions
+do {
+    launchOptions = try DesktopLaunchOptions(arguments: launchArguments)
+} catch let error as DesktopLaunchError {
+    fputs("cornerworld: \(error.description)\n", stderr)
+    exit(2)
+} catch {
+    fputs("cornerworld: \(error.localizedDescription)\n", stderr)
+    exit(2)
+}
+
+switch launchOptions.command {
+case .help:
+    printDesktopHelp()
+    exit(EXIT_SUCCESS)
+case .version:
+    print("Cornerworld 1.1.0")
+    exit(EXIT_SUCCESS)
+case .captureFarmFixtures(let directory):
+    let farmFixtureDirectory = URL(
+        fileURLWithPath: directory,
+        relativeTo: URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
+    ).standardizedFileURL
+    _ = NSApplication.shared
+    do {
+        let fixtureURLs = try FarmFixtureCapture.writeFixtures(to: farmFixtureDirectory)
+        for url in fixtureURLs {
+            print(url.path)
         }
-    case "--fast":
-        break
-    case "--help", "-h":
-        printDesktopHelp()
         exit(EXIT_SUCCESS)
-    case "--version":
-        print("Cornerworld 1.1.0")
-        exit(EXIT_SUCCESS)
-    default:
-        fputs("cornerworld: unknown option '\(launchArguments[argumentIndex])'; use --help\n", stderr)
-        exit(2)
+    } catch {
+        fputs("cornerworld: could not capture Farm fixtures: \(error.localizedDescription)\n", stderr)
+        exit(1)
     }
-    argumentIndex += 1
+case .captureMenuBarFixtures(let directory):
+    let menuBarFixtureDirectory = URL(
+        fileURLWithPath: directory,
+        relativeTo: URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
+    ).standardizedFileURL
+    _ = NSApplication.shared
+    do {
+        let fixtureURLs = try MenuBarFixtureCapture.writeFixtures(to: menuBarFixtureDirectory)
+        for url in fixtureURLs {
+            print(url.path)
+        }
+        exit(EXIT_SUCCESS)
+    } catch {
+        fputs("cornerworld: could not capture menu-bar fixtures: \(error.localizedDescription)\n", stderr)
+        exit(1)
+    }
+case .run:
+    break
 }
 
 let app = NSApplication.shared
-let delegate = AppDelegate()
-app.delegate = delegate
+let retainedDelegate: any NSApplicationDelegate = switch launchOptions.world {
+case .overland:
+    AppDelegate()
+case .farm:
+    FarmAppDelegate(
+        seed: launchOptions.seed,
+        plan: launchOptions.farmPlan,
+        fast: launchOptions.fast
+    )
+}
+app.delegate = retainedDelegate
 app.setActivationPolicy(.accessory)
 app.run()

@@ -10,6 +10,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var scene: TrailScene!
     private var simulation: Simulation!
     private var statusItem: NSStatusItem!
+    private var appearanceObservation: NSKeyValueObservation?
     private var tickTimer: Timer?
     private var latestEvent = "The wagon train sets out for Oregon."
     private var presentationRevision = 0
@@ -102,70 +103,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         if let button = statusItem.button {
             button.title = ""
             button.imagePosition = .imageLeading
+            appearanceObservation = button.observe(\.effectiveAppearance, options: [.new]) { [weak self] _, _ in
+                Task { @MainActor in
+                    self?.updateStatus()
+                }
+            }
         }
         statusItem.menu = buildStatusMenu()
         updateMenus()
         updateStatus()
-    }
-
-    private func statusIcon(accent: NSColor) -> NSImage {
-        let size = NSSize(width: 23, height: 16)
-        let image = NSImage(size: size)
-        image.lockFocus()
-        let color = NSColor.controlTextColor
-
-        // A recognisable covered-wagon silhouette: arched canvas, shallow bed,
-        // separated wheels, and a short tongue. Half-point coordinates keep the
-        // strokes crisp in the menu bar at both 1x and Retina scale.
-        let canvas = NSBezierPath()
-        canvas.move(to: NSPoint(x: 2.5, y: 7.5))
-        canvas.line(to: NSPoint(x: 2.5, y: 9))
-        canvas.curve(
-            to: NSPoint(x: 6, y: 14),
-            controlPoint1: NSPoint(x: 2.5, y: 11.8),
-            controlPoint2: NSPoint(x: 4, y: 14)
-        )
-        canvas.line(to: NSPoint(x: 12, y: 14))
-        canvas.curve(
-            to: NSPoint(x: 15.5, y: 9),
-            controlPoint1: NSPoint(x: 14, y: 14),
-            controlPoint2: NSPoint(x: 15.5, y: 11.8)
-        )
-        canvas.line(to: NSPoint(x: 15.5, y: 7.5))
-        canvas.close()
-        color.withAlphaComponent(0.18).setFill()
-        canvas.fill()
-        color.setStroke()
-        canvas.lineWidth = 1.25
-        canvas.lineJoinStyle = .round
-        canvas.stroke()
-
-        let body = NSBezierPath(roundedRect: NSRect(x: 1.5, y: 5, width: 15, height: 3.5), xRadius: 0.75, yRadius: 0.75)
-        color.setFill()
-        body.fill()
-
-        let tongue = NSBezierPath()
-        tongue.move(to: NSPoint(x: 16, y: 7))
-        tongue.line(to: NSPoint(x: 19.25, y: 5.25))
-        color.setStroke()
-        tongue.lineWidth = 1.25
-        tongue.lineCapStyle = .round
-        tongue.stroke()
-
-        for x in [3.0, 12.0] {
-            let wheel = NSBezierPath(ovalIn: NSRect(x: x, y: 1.5, width: 4, height: 4))
-            color.setStroke()
-            wheel.lineWidth = 1.25
-            wheel.stroke()
-        }
-
-        // A compact state light keeps health attached to the world icon rather
-        // than competing with the mileage as a second full-size glyph.
-        accent.setFill()
-        NSBezierPath(ovalIn: NSRect(x: 19, y: 11.5, width: 3.5, height: 3.5)).fill()
-        image.unlockFocus()
-        image.isTemplate = false
-        return image
     }
 
     private func buildStatusMenu() -> NSMenu {
@@ -183,6 +129,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let newRun = NSMenuItem(title: "New journey", action: #selector(startNewRun), keyEquivalent: "n")
         newRun.target = self
         menu.addItem(newRun)
+
+        let worlds = NSMenuItem(title: "Worlds", action: nil, keyEquivalent: "")
+        let worldsMenu = NSMenu(title: "Worlds")
+        let currentWorld = NSMenuItem(title: "Overland — open", action: nil, keyEquivalent: "")
+        currentWorld.state = .on
+        worldsMenu.addItem(currentWorld)
+        worldsMenu.addItem(.separator())
+        let anotherOverland = NSMenuItem(title: "Open another Overland…", action: #selector(openOverlandWorld), keyEquivalent: "")
+        anotherOverland.target = self
+        worldsMenu.addItem(anotherOverland)
+        let openFarm = NSMenuItem(title: "Open Farm…", action: #selector(openFarmWorld), keyEquivalent: "")
+        openFarm.target = self
+        worldsMenu.addItem(openFarm)
+        worlds.submenu = worldsMenu
+        menu.addItem(worlds)
 
         let pace = NSMenuItem(title: "Pace", action: nil, keyEquivalent: "")
         paceMenu = NSMenu(title: "Pace")
@@ -256,6 +217,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         updateMenus()
         updateStatus()
         startTicking()
+    }
+
+    @objc private func openOverlandWorld() {
+        if WorldLauncher.open(.overland) {
+            hideWindow()
+        }
+    }
+
+    @objc private func openFarmWorld() {
+        if WorldLauncher.open(.farm) {
+            hideWindow()
+        }
     }
 
     @objc private func setPace(_ sender: NSMenuItem) {
@@ -375,36 +348,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             accent = NSColor.systemOrange
         }
 
-        button.image = statusIcon(accent: accent)
-
-        let milesText = " \(miles) mi"
-        let separator = " · "
-        let partyText = "\(alive)/\(total)"
-        let title = NSMutableAttributedString(string: milesText + separator + partyText)
-        let digitFont = NSFont.monospacedDigitSystemFont(ofSize: 12.5, weight: .medium)
-        title.addAttributes(
-            [.foregroundColor: NSColor.labelColor, .font: digitFont],
-            range: NSRange(location: 0, length: (milesText as NSString).length)
+        button.image = MenuBarPresentation.overlandIcon(accent: accent)
+        button.attributedTitle = MenuBarPresentation.overlandTitle(
+            miles: miles,
+            alive: alive,
+            total: total,
+            accent: accent
         )
-        title.addAttributes(
-            [.foregroundColor: NSColor.secondaryLabelColor, .font: digitFont],
-            range: NSRange(
-                location: (milesText as NSString).length,
-                length: (separator as NSString).length
-            )
-        )
-        title.addAttributes(
-            [
-                .foregroundColor: alive < total ? accent : NSColor.secondaryLabelColor,
-                .font: NSFont.monospacedDigitSystemFont(ofSize: 12.5, weight: alive < total ? .semibold : .regular),
-            ],
-            range: NSRange(
-                location: (milesText as NSString).length + (separator as NSString).length,
-                length: (partyText as NSString).length
-            )
-        )
-
-        button.attributedTitle = title
         button.setAccessibilityLabel("Cornerworld Overland status")
         button.setAccessibilityValue("\(miles) miles traveled; \(alive) of \(total) travelers alive")
         button.toolTip = "CORNERWORLD — OVERLAND\n\(simulation.dateString)\n\(miles) miles traveled · \(simulation.distanceRemaining) remaining\n\(alive) of \(total) travelers alive\nSeed \(seedText)"

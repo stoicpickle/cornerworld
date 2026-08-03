@@ -11,8 +11,23 @@ feel present without asking to become the center of attention.
 
 Version 1.1 ships with **Overland**, a deterministic westward journey about
 distance, weather, supplies, health, and attrition. Overland is the first world,
-not the limit of the idea. A farm, lighthouse, railway, expedition, or other
-slow-running scenario could eventually inhabit the same desktop form.
+not the limit of the idea. A lighthouse, railway, expedition, or other
+slow-running scenario could eventually join it in the same desktop form.
+
+The current development build also includes **Farm**, Cornerworld's first
+experiment with a second world: a deterministic year of planting, weather,
+harvest, and winter pressure rendered as a fixed seasonal homestead.
+
+| Farm in summer | Farm in winter |
+| --- | --- |
+| ![A mature wheat field outside the Cornerworld farmhouse and barn](docs/images/farm-summer-mature.png) | ![The Cornerworld farm resting beneath winter snow](docs/images/farm-winter-snow.png) |
+
+Overland now gives important events their own deterministic pixel-art
+vignettes instead of reporting every encounter through text alone.
+
+| Wolves harry the herd | A rattler strikes |
+| --- | --- |
+| ![Wolves approaching the Overland wagon and ox](docs/images/overland-wolves.png) | ![A rattlesnake striking beside the Overland wagon](docs/images/overland-snakebite.png) |
 
 ## What is here in 1.1
 
@@ -54,6 +69,20 @@ swift run cornerworld --seed 7
 swift run cornerworld --seed 7 --fast
 ```
 
+To open Farm instead, choose it at launch or start it while Overland continues
+running from the **Worlds** submenu in either menu-bar item:
+
+```sh
+swift run cornerworld --world farm --seed 1848 --plan wheat
+swift run cornerworld --world farm --seed 1848 --plan beans --fast
+```
+
+Each open world has its own corner window, simulation clock, and menu-bar item.
+Opening another world from that submenu hides the current corner window to
+prevent overlap; its clock keeps running, and its menu-bar item can show it
+again. This supports multiple concurrent worlds without claiming a plugin
+architecture or shared persistence layer yet.
+
 ## Choices
 
 ### Pace
@@ -87,6 +116,14 @@ swift run cornerworld-cli --seed 7
 swift run cornerworld-cli --help
 ```
 
+Farm also has a deterministic terminal proof:
+
+```sh
+swift run cornerworld-farm-cli --seed 1848 --plan wheat
+swift run cornerworld-farm-cli --seed 1848 --plan beans --fast
+swift run cornerworld-farm-cli --seed 1848 --plan fallow --fast
+```
+
 ## Validate a checkout
 
 ```sh
@@ -95,16 +132,31 @@ swift test -c release
 swift build -c release
 ```
 
+Farm's process-owned visual proof does not require Screen Recording permission:
+
+```sh
+swift run cornerworld --capture-farm-fixtures .build/visual-proof/farm
+swift run cornerworld --capture-menu-bar-fixtures .build/visual-proof/menu-bar
+```
+
+The current menu-bar acceptance results and remaining accessibility checks are
+recorded in [docs/TOP_BAR_ACCEPTANCE.md](docs/TOP_BAR_ACCEPTANCE.md).
+
 ## Project structure
 
 - `GameCore` owns deterministic simulation state, daily events, and journey
   outcomes.
-- `TrailApp` owns the macOS status item and fixed-resolution SpriteKit scene.
+- `FarmCore` owns the Farm world's deterministic weekly year, field plans,
+  harvest accounting, and winter outcome.
+- `DesktopHostCore` owns testable desktop launch parsing and validation.
+- `TrailApp` owns the macOS status items, world launcher, and fixed-resolution
+  SpriteKit scenes.
 - `GameCLI` provides a terminal presentation for seeded runs.
+- `FarmCLI` provides a quick terminal proof for seeded Farm years.
 
-Cornerworld deliberately remains a single-scenario application in 1.1. The
-shared scenario interface will be extracted after a second world supplies a
-real design case; the project does not claim to have a plugin system today.
+Cornerworld now keeps two authored scenarios beside one another, but deliberately
+does not extract a shared scenario interface yet. The project does not claim to
+have a plugin system today.
 See [the roadmap](docs/ROADMAP.md) for the intended direction.
 
 ## Contributing

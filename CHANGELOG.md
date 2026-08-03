@@ -2,6 +2,21 @@
 
 Cornerworld follows [Semantic Versioning](https://semver.org/).
 
+## Unreleased
+
+### Added
+
+- A deterministic 52-week Farm simulation with seasonal weather, wheat, beans,
+  fallow, explainable harvests, winter pressure, and a terminal runner.
+- A fixed 320x200 Farm scene whose field, buildings, weather, crop growth, and
+  palette visibly change through the year.
+- Desktop world selection with independent Overland and Farm windows that can
+  run at the same time.
+- Tested desktop launch parsing plus privacy-safe light/dark menu-bar fixtures
+  and a repeatable acceptance matrix.
+- Reachable stable, strained, and debt Farm endings, explicit new-farm plan
+  controls, and cleanup for completed child-world processes.
+
 ## 1.1.0 — 2026-08-03
 
 ### Added
