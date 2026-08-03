@@ -36,7 +36,7 @@ while argumentIndex < launchArguments.count {
         printDesktopHelp()
         exit(EXIT_SUCCESS)
     case "--version":
-        print("Cornerworld 1.0.0")
+        print("Cornerworld 1.1.0")
         exit(EXIT_SUCCESS)
     default:
         fputs("cornerworld: unknown option '\(launchArguments[argumentIndex])'; use --help\n", stderr)

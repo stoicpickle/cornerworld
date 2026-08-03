@@ -9,18 +9,20 @@ feel present without asking to become the center of attention.
 
 ![The Overland scenario running in the desktop corner](docs/images/overland-window.png)
 
-Version 1.0 ships with **Overland**, a deterministic westward journey about
+Version 1.1 ships with **Overland**, a deterministic westward journey about
 distance, weather, supplies, health, and attrition. Overland is the first world,
 not the limit of the idea. A farm, lighthouse, railway, expedition, or other
 slow-running scenario could eventually inhabit the same desktop form.
 
-## What is here in 1.0
+## What is here in 1.1
 
 - A borderless SpriteKit world pinned to a macOS desktop corner.
 - A compact menu-bar readout for mileage and surviving travelers.
 - Deterministic journeys that can be reproduced from a seed.
 - Persistent weather fronts, terrain, landmarks, illness, trade, repairs, and
   supply opportunities.
+- Deterministic pixel-art vignettes for crossings, hunts, breakdowns, encounters,
+  weather, and quiet trail moments.
 - Meaningful pace and ration choices.
 - A trail journal and end-of-journey memorial summary.
 - A terminal runner for development and simulation checks.
@@ -30,7 +32,7 @@ slow-running scenario could eventually inhabit the same desktop form.
 - macOS 13 or later
 - Swift 6 toolchain (Xcode 16 or a compatible Swift installation)
 
-Cornerworld 1.0 is a source-first release. It does not yet include a signed or
+Cornerworld 1.1 is a source-first release. It does not yet include a signed or
 notarized `.app` bundle, an installer, or launch-at-login support.
 
 ## Run the desktop world
@@ -100,7 +102,7 @@ swift build -c release
 - `TrailApp` owns the macOS status item and fixed-resolution SpriteKit scene.
 - `GameCLI` provides a terminal presentation for seeded runs.
 
-Cornerworld deliberately remains a single-scenario application in 1.0. The
+Cornerworld deliberately remains a single-scenario application in 1.1. The
 shared scenario interface will be extracted after a second world supplies a
 real design case; the project does not claim to have a plugin system today.
 See [the roadmap](docs/ROADMAP.md) for the intended direction.

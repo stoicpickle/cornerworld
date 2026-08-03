@@ -3,6 +3,8 @@ import XCTest
 
 final class SimulationTests: XCTestCase {
 
+    private func requireSendable<T: Sendable>(_: T.Type) {}
+
     func testDisplayedSeedsRoundTripAsHexAndDecimalInputStillWorks() {
         let seed = UInt64.max - 123
         XCTAssertEqual(SeedCodec.parse(SeedCodec.display(seed)), seed)
@@ -329,6 +331,10 @@ final class SimulationTests: XCTestCase {
                 observedIllness = true
                 XCTAssertNotNil(sim.party.members[0].ailment)
                 XCTAssertEqual(sim.party.members[0].daysIll, 0)
+                XCTAssertEqual(
+                    sim.latestVisualEvent,
+                    .illness(memberName: "Ada", ailment: sim.party.members[0].ailment!)
+                )
                 break
             }
         }
@@ -348,6 +354,7 @@ final class SimulationTests: XCTestCase {
         XCTAssertEqual(sim.party.members[0].ailment, .cholera)
         XCTAssertEqual(sim.party.members[0].daysIll, 4)
         XCTAssertEqual(log, ["A rattler circles the camp, but no one is struck."])
+        XCTAssertEqual(sim.latestVisualEvent, .snakebite(.missed))
     }
 
     func testHuntingCannotSpendMoreAmmunitionThanAvailable() {
@@ -363,6 +370,10 @@ final class SimulationTests: XCTestCase {
             if log.contains(where: { $0.contains("A hunt succeeds") }) {
                 observedHunt = true
                 XCTAssertGreaterThanOrEqual(sim.supplies.ammunition, 0)
+                guard case .hunt(.success(let meat)) = sim.latestVisualEvent else {
+                    return XCTFail("expected a typed successful hunt")
+                }
+                XCTAssertTrue(log.last?.contains("\(meat) lbs of meat") == true)
                 break
             }
         }
@@ -490,6 +501,9 @@ final class SimulationTests: XCTestCase {
         XCTAssertLessThan(sim.milesTraveled, 100)
         XCTAssertEqual(sim.party.members[0].health, 98)
         XCTAssertTrue(log[0].contains("repairs cost"))
+        guard case .wagonBreakdown(_, repaired: false) = sim.latestVisualEvent else {
+            return XCTFail("expected a typed unrepaired breakdown")
+        }
     }
 
     func testRegionalEncountersChangeAlongTheTrail() {
@@ -533,6 +547,9 @@ final class SimulationTests: XCTestCase {
         XCTAssertTrue(gainedSomething)
         XCTAssertEqual(log.count, 1)
         XCTAssertLessThanOrEqual(log[0].count, 68)
+        guard case .trailOpportunity = sim.latestVisualEvent else {
+            return XCTFail("expected a typed trail opportunity")
+        }
     }
 
     func testBadWeatherEventStartsAStormFront() {
@@ -544,5 +561,241 @@ final class SimulationTests: XCTestCase {
         XCTAssertEqual(sim.currentWeather.kind, .storm)
         XCTAssertEqual(sim.weatherFrontDaysRemainingForTesting, 2)
         XCTAssertTrue(log[0].contains("squall"))
+    }
+
+    func testVisualEventContractIsEquatableAndSendable() {
+        requireSendable(VisualEvent.self)
+        requireSendable(HuntOutcome.self)
+        requireSendable(TrailOpportunityItem.self)
+        requireSendable(WagonPart.self)
+        requireSendable(SnakebiteOutcome.self)
+        requireSendable(RiverCrossingOutcome.self)
+        requireSendable(AmbientMoment.self)
+
+        XCTAssertEqual(
+            VisualEvent.wagonBreakdown(part: .wheel, repaired: true),
+            .wagonBreakdown(part: .wheel, repaired: true)
+        )
+        XCTAssertNotEqual(
+            VisualEvent.hunt(.noAmmunition),
+            .hunt(.success(meatPounds: 80))
+        )
+    }
+
+    func testEventHelpersPublishTypedOutcomesWithoutChangingTheirMessages() {
+        let opportunity = Simulation(seed: 3, supplies: Supplies())
+        var opportunityLog: [String] = []
+        opportunity.trailOpportunity(log: &opportunityLog)
+        guard case .trailOpportunity = opportunity.latestVisualEvent else {
+            return XCTFail("expected a typed trail opportunity")
+        }
+        XCTAssertEqual(opportunityLog.count, 1)
+
+        let breakdown = Simulation(
+            seed: 5,
+            supplies: Supplies(spareWheels: 0, spareAxles: 0, spareTongues: 0),
+            milesTraveled: 100
+        )
+        var breakdownLog: [String] = []
+        breakdown.wagonBreakdown(log: &breakdownLog)
+        guard case .wagonBreakdown(_, repaired: false) = breakdown.latestVisualEvent else {
+            return XCTFail("expected an unrepaired breakdown")
+        }
+        XCTAssertTrue(breakdownLog[0].contains("repairs cost"))
+
+        let illParty = Party(members: [
+            PartyMember(name: "Ada", ailment: .cholera, daysIll: 4),
+        ])
+        let snake = Simulation(seed: 1, party: illParty, supplies: Supplies())
+        var snakeLog: [String] = []
+        snake.snakeBite(log: &snakeLog)
+        XCTAssertEqual(snake.latestVisualEvent, .snakebite(.missed))
+        XCTAssertEqual(snakeLog, ["A rattler circles the camp, but no one is struck."])
+
+        let trade = Simulation(seed: 1, supplies: Supplies(cash: 0))
+        var tradeLog: [String] = []
+        trade.regionalTrade(log: &tradeLog)
+        XCTAssertEqual(trade.latestVisualEvent, .regionalTrade)
+
+        let weather = Simulation(seed: 1, supplies: Supplies())
+        var weatherLog: [String] = []
+        weather.weatherTurnsBad(log: &weatherLog)
+        XCTAssertEqual(weather.latestVisualEvent, .weatherWorsening)
+    }
+
+    func testAmbientMomentMappingMatchesExistingVignetteOrder() {
+        XCTAssertEqual(
+            Simulation.ambientMoment(terrain: .prairie, weather: .clear, index: 0),
+            .prairieGrass
+        )
+        XCTAssertEqual(
+            Simulation.ambientMoment(terrain: .mountains, weather: .overcast, index: 0),
+            .fallingStone
+        )
+        XCTAssertEqual(
+            Simulation.ambientMoment(terrain: .river, weather: .clear, index: 1),
+            .longShadows
+        )
+        XCTAssertEqual(
+            Simulation.ambientMoment(terrain: .plains, weather: .overcast, index: 1),
+            .lowClouds
+        )
+        XCTAssertEqual(
+            Simulation.ambientMoment(terrain: .prairie, weather: .storm, index: 0),
+            .lightning
+        )
+    }
+
+    func testLatestVisualEventClearsAtTheStartOfAQuietTick() {
+        var observedQuietTick = false
+
+        for seed in UInt64(0)..<200 {
+            let sim = Simulation(seed: seed, supplies: Supplies())
+            var setupLog: [String] = []
+            sim.regionalTrade(log: &setupLog)
+            XCTAssertEqual(sim.latestVisualEvent, .regionalTrade)
+
+            let log = sim.tick()
+            if log.isEmpty {
+                observedQuietTick = true
+                XCTAssertNil(sim.latestVisualEvent)
+                break
+            }
+        }
+
+        XCTAssertTrue(observedQuietTick, "expected at least one deterministic quiet seed")
+    }
+
+    func testTypedVisualEventsStayAlignedWithTheFinalDisplayedMessage() {
+        var checkedEvents = 0
+
+        for seed in UInt64(0)..<80 {
+            let sim = Simulation(seed: seed)
+            while !sim.isFinished, sim.day < 80 {
+                let log = sim.tick()
+                guard let visualEvent = sim.latestVisualEvent else { continue }
+                guard let displayedMessage = log.last else {
+                    return XCTFail("a visual event must have a displayed message")
+                }
+                XCTAssertTrue(
+                    visualEventMatchesDisplayedMessage(visualEvent, displayedMessage),
+                    "\(visualEvent) does not match: \(displayedMessage)"
+                )
+                checkedEvents += 1
+            }
+        }
+
+        XCTAssertGreaterThan(checkedEvents, 100)
+    }
+
+    func testDailyEventTakesVisualPriorityAfterARiverCrossing() {
+        var observedOverwrite = false
+
+        for seed in UInt64(0)..<300 {
+            let sim = Simulation(seed: seed, supplies: Supplies(), milesTraveled: 1889)
+            let log = sim.tick()
+            guard log.contains("You arrive at the Fort Walla Walla crossing."),
+                  let event = sim.latestVisualEvent else { continue }
+            if case .riverCrossing = event { continue }
+
+            observedOverwrite = true
+            XCTAssertTrue(visualEventMatchesDisplayedMessage(event, log.last ?? ""))
+            break
+        }
+
+        XCTAssertTrue(observedOverwrite, "expected a later daily event to replace river art")
+    }
+
+    func testTerminalOutcomeClearsEarlierRiverVisualEvent() {
+        var observedTerminalRiverLoss = false
+
+        for seed in UInt64(0)..<300 {
+            let party = Party(members: [PartyMember(name: "Ada")])
+            let sim = Simulation(
+                seed: seed,
+                party: party,
+                supplies: Supplies(),
+                milesTraveled: 1889
+            )
+            let log = sim.tick()
+            guard sim.outcome == .partyPerished(cause: "drowning") else { continue }
+
+            observedTerminalRiverLoss = true
+            XCTAssertNil(sim.latestVisualEvent)
+            XCTAssertEqual(
+                log.last,
+                "The trail has taken everyone. The wagons sit still on the prairie."
+            )
+            break
+        }
+
+        XCTAssertTrue(observedTerminalRiverLoss, "expected a deterministic terminal river loss")
+    }
+
+    private func visualEventMatchesDisplayedMessage(_ event: VisualEvent, _ message: String) -> Bool {
+        switch event {
+        case .illness(let name, let ailment):
+            return message == "\(name) has come down with \(ailment.rawValue)."
+        case .hunt(.success(let meat)):
+            return message == "A hunt succeeds. You dress \(meat) lbs of meat and press on."
+        case .hunt(.noAmmunition):
+            return message == "Buffalo graze in the distance, but you have no shot to spare."
+        case .trailOpportunity(.food(let pounds)):
+            return message == "An abandoned cache yields \(pounds) lbs of usable food."
+        case .trailOpportunity(.spareWheel):
+            return message == "A discarded wagon leaves behind one sound spare wheel."
+        case .trailOpportunity(.spareAxle):
+            return message == "You salvage a sound axle from a discarded wagon."
+        case .trailOpportunity(.clothing):
+            return message == "A folded wool coat is found beside an old campsite."
+        case .wolves(let lost):
+            return lost
+                ? message == "Wolves harry the herd at dusk. You lose an ox."
+                : message == "Wolves circle the camp, but you've nothing left to lose."
+        case .wagonBreakdown(let part, let repaired):
+            if !repaired { return message.hasPrefix("With no matching spare, repairs cost ") }
+            return switch part {
+            case .wheel: message == "A wheel cracks. You fit a spare and keep moving."
+            case .axle: message == "The axle groans and splits. A spare saves the day."
+            case .tongue: message == "The tongue splinters on a rock. You swap in the spare."
+            }
+        case .snakebite(.struck(let name)):
+            return message == "A rattler strikes at \(name)'s boot. The wound swells."
+        case .snakebite(.missed):
+            return message == "A rattler circles the camp, but no one is struck."
+        case .spring:
+            return message == "You find a cold spring. Everyone drinks their fill and feels stronger."
+        case .regionalTrade:
+            return message.contains("trade") || message.contains("trader")
+                || message.contains("Shoshone") || message.contains("Cayuse")
+        case .weatherWorsening:
+            return message.hasPrefix("A squall line builds") || message.hasPrefix("The weather worsens")
+        case .ambient(let moment):
+            return message == ambientMessage(for: moment)
+        case .riverCrossing(_, .success):
+            return message == "The wagons ford the crossing. Everyone makes it across."
+        case .riverCrossing(_, .suppliesLost(let pounds)):
+            return message == "The water is high. \(pounds) lbs of supplies wash away."
+        case .riverCrossing(_, .travelerLost(let name)):
+            return message == "The wagon tips in the current. \(name) is lost."
+        case .riverCrossing(_, .impassable):
+            return message == "The river is impassable. You wait a day on the bank."
+        }
+    }
+
+    private func ambientMessage(for moment: AmbientMoment) -> String {
+        switch moment {
+        case .prairieGrass: "Wagon ruts disappear beneath the tall prairie grass."
+        case .buffaloHerd: "A buffalo herd darkens the northern horizon."
+        case .cottonwoodLeaves: "Cottonwood leaves turn silver along the riverbank."
+        case .fallingStone: "Loose stone rattles down the mountain slope."
+        case .longShadows: "Long shadows stretch east across the trail."
+        case .lowClouds: "Low gray clouds flatten the distant horizon."
+        case .rainTracks: "Fresh wagon tracks slowly fill with rainwater."
+        case .lightning: "Lightning shows the trail ahead for an instant."
+        case .snowRuts: "Snow softens the ruts left by the wagons ahead."
+        case .heatShimmer: "Heat shimmers above the dry and empty trail."
+        case .frostGrass: "A hard frost rims the grass beside the wagon."
+        }
     }
 }

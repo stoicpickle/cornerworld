@@ -27,7 +27,7 @@ public struct PartyMember {
     }
 }
 
-public enum Ailment: String {
+public enum Ailment: String, Equatable, Sendable {
     case dysentery
     case cholera
     case typhoid

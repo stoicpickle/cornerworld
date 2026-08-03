@@ -25,6 +25,10 @@ public final class Simulation {
 
     public private(set) var currentWeather: Weather = Weather(kind: .clear, speedFactor: 1.0)
     public private(set) var eventLog: [String] = []
+    /// Cleared at the beginning of every tick. Event handlers assign this when
+    /// they append their message, so a later renderable event takes priority.
+    /// Terminal outcomes clear it because the ending presentation takes over.
+    public private(set) var latestVisualEvent: VisualEvent?
     public private(set) var isFinished: Bool = false
     public private(set) var outcome: Outcome?
 
@@ -92,6 +96,7 @@ public final class Simulation {
 
     @discardableResult
     public func tick() -> [String] {
+        latestVisualEvent = nil
         guard !isFinished else { return [] }
         day += 1
         advanceCalendar()
@@ -247,8 +252,16 @@ public final class Simulation {
                 let lostFood = rng.int(in: 40...120)
                 supplies.foodPounds = max(0, supplies.foodPounds - lostFood)
                 log.append("The water is high. \(lostFood) lbs of supplies wash away.")
+                latestVisualEvent = .riverCrossing(
+                    landmarkName: landmark.name,
+                    outcome: .suppliesLost(pounds: lostFood)
+                )
             } else {
                 log.append("The wagons ford the crossing. Everyone makes it across.")
+                latestVisualEvent = .riverCrossing(
+                    landmarkName: landmark.name,
+                    outcome: .success
+                )
             }
         } else {
             let candidates = party.members.indices.filter { party.members[$0].isAlive }
@@ -260,8 +273,16 @@ public final class Simulation {
                 party.members[index].causeOfDeath = "drowning"
                 latestDeathCause = "drowning"
                 log.append("The wagon tips in the current. \(party.members[index].name) is lost.")
+                latestVisualEvent = .riverCrossing(
+                    landmarkName: landmark.name,
+                    outcome: .travelerLost(name: party.members[index].name)
+                )
             } else {
                 log.append("The river is impassable. You wait a day on the bank.")
+                latestVisualEvent = .riverCrossing(
+                    landmarkName: landmark.name,
+                    outcome: .impassable
+                )
             }
         }
     }
@@ -295,6 +316,9 @@ public final class Simulation {
         let choices = Self.passiveVignettes(terrain: terrain, weather: currentWeather.kind)
         if let index = rng.index(count: choices.count) {
             log.append(choices[index])
+            latestVisualEvent = .ambient(
+                Self.ambientMoment(terrain: terrain, weather: currentWeather.kind, index: index)
+            )
         }
     }
 
@@ -348,6 +372,28 @@ public final class Simulation {
         }
     }
 
+    static func ambientMoment(terrain: Terrain, weather: Weather.Kind, index: Int) -> AmbientMoment {
+        if index == 0 {
+            switch weather {
+            case .rain: return .rainTracks
+            case .storm: return .lightning
+            case .snow: return .snowRuts
+            case .heatwave: return .heatShimmer
+            case .coldSnap: return .frostGrass
+            case .clear, .overcast: break
+            }
+
+            return switch terrain {
+            case .prairie: .prairieGrass
+            case .plains: .buffaloHerd
+            case .river: .cottonwoodLeaves
+            case .mountains: .fallingStone
+            }
+        }
+
+        return weather == .clear ? .longShadows : .lowClouds
+    }
+
     private func giveIllness(_ ailment: Ailment, log: inout [String]) {
         let candidates = party.members.indices.filter { party.members[$0].isAlive && party.members[$0].ailment == nil }
         guard let choice = rng.index(count: candidates.count) else { return }
@@ -355,11 +401,13 @@ public final class Simulation {
         party.members[i].ailment = ailment
         party.members[i].daysIll = 0
         log.append("\(party.members[i].name) has come down with \(ailment.rawValue).")
+        latestVisualEvent = .illness(memberName: party.members[i].name, ailment: ailment)
     }
 
     private func hunt(log: inout [String]) {
         guard supplies.ammunition >= 20 else {
             log.append("Buffalo graze in the distance, but you have no shot to spare.")
+            latestVisualEvent = .hunt(.noAmmunition)
             return
         }
         let ammunitionUsed = min(supplies.ammunition, rng.int(in: 10...30))
@@ -367,6 +415,7 @@ public final class Simulation {
         let meat = rng.int(in: 80...300)
         supplies.foodPounds += meat
         log.append("A hunt succeeds. You dress \(meat) lbs of meat and press on.")
+        latestVisualEvent = .hunt(.success(meatPounds: meat))
     }
 
     func trailOpportunity(log: inout [String]) {
@@ -375,15 +424,19 @@ public final class Simulation {
             let food = rng.int(in: 35...80)
             supplies.foodPounds += food
             log.append("An abandoned cache yields \(food) lbs of usable food.")
+            latestVisualEvent = .trailOpportunity(.food(pounds: food))
         case 1:
             supplies.spareWheels += 1
             log.append("A discarded wagon leaves behind one sound spare wheel.")
+            latestVisualEvent = .trailOpportunity(.spareWheel)
         case 2:
             supplies.spareAxles += 1
             log.append("You salvage a sound axle from a discarded wagon.")
+            latestVisualEvent = .trailOpportunity(.spareAxle)
         default:
             supplies.clothingSets += 1
             log.append("A folded wool coat is found beside an old campsite.")
+            latestVisualEvent = .trailOpportunity(.clothing)
         }
     }
 
@@ -391,22 +444,32 @@ public final class Simulation {
         if supplies.oxen > 0 {
             supplies.oxen -= 1
             log.append("Wolves harry the herd at dusk. You lose an ox.")
+            latestVisualEvent = .wolves(oxLost: true)
         } else {
             log.append("Wolves circle the camp, but you've nothing left to lose.")
+            latestVisualEvent = .wolves(oxLost: false)
         }
     }
 
     func wagonBreakdown(log: inout [String]) {
         let part = rng.int(in: 0...2)
+        let wagonPart: WagonPart = switch part {
+        case 0: .wheel
+        case 1: .axle
+        default: .tongue
+        }
         if part == 0 && supplies.spareWheels > 0 {
             supplies.spareWheels -= 1
             log.append("A wheel cracks. You fit a spare and keep moving.")
+            latestVisualEvent = .wagonBreakdown(part: wagonPart, repaired: true)
         } else if part == 1 && supplies.spareAxles > 0 {
             supplies.spareAxles -= 1
             log.append("The axle groans and splits. A spare saves the day.")
+            latestVisualEvent = .wagonBreakdown(part: wagonPart, repaired: true)
         } else if part == 2 && supplies.spareTongues > 0 {
             supplies.spareTongues -= 1
             log.append("The tongue splinters on a rock. You swap in the spare.")
+            latestVisualEvent = .wagonBreakdown(part: wagonPart, repaired: true)
         } else {
             let lostMiles = rng.int(in: 8...18)
             milesTraveled = max(0, milesTraveled - lostMiles)
@@ -414,6 +477,7 @@ public final class Simulation {
                 party.members[i].health = max(1, party.members[i].health - 2)
             }
             log.append("With no matching spare, repairs cost \(lostMiles) miles.")
+            latestVisualEvent = .wagonBreakdown(part: wagonPart, repaired: false)
         }
     }
 
@@ -423,12 +487,14 @@ public final class Simulation {
         }
         guard let choice = rng.index(count: candidates.count) else {
             log.append("A rattler circles the camp, but no one is struck.")
+            latestVisualEvent = .snakebite(.missed)
             return
         }
         let i = candidates[choice]
         party.members[i].ailment = .snakebite
         party.members[i].daysIll = 0
         log.append("A rattler strikes at \(party.members[i].name)'s boot. The wound swells.")
+        latestVisualEvent = .snakebite(.struck(memberName: party.members[i].name))
     }
 
     private func findSpring(log: inout [String]) {
@@ -436,9 +502,11 @@ public final class Simulation {
             party.members[i].health = min(100, party.members[i].health + 10)
         }
         log.append("You find a cold spring. Everyone drinks their fill and feels stronger.")
+        latestVisualEvent = .spring
     }
 
     func regionalTrade(log: inout [String]) {
+        latestVisualEvent = .regionalTrade
         switch milesTraveled {
         case ..<890:
             tradeFood(
@@ -489,6 +557,7 @@ public final class Simulation {
     }
 
     func weatherTurnsBad(log: inout [String]) {
+        latestVisualEvent = .weatherWorsening
         if currentWeather.kind == .clear || currentWeather.kind == .overcast {
             currentWeather = Weather(kind: .storm, speedFactor: 0.6)
             weatherFrontDaysRemaining = 2
@@ -522,11 +591,13 @@ public final class Simulation {
 
     private func checkEndConditions(_ log: inout [String]) {
         if party.isAllDead {
+            latestVisualEvent = nil
             isFinished = true
             let cause = latestDeathCause ?? "the wilderness"
             outcome = .partyPerished(cause: cause)
             log.append("The trail has taken everyone. The wagons sit still on the prairie.")
         } else if milesTraveled >= Trail.totalMiles {
+            latestVisualEvent = nil
             isFinished = true
             outcome = .reachedOregon
             log.append("After \(day) days, you reach the Willamette Valley. Oregon, at last.")

@@ -16,6 +16,7 @@ struct TrailPresentationSnapshot {
     let nextLandmarkName: String?
     let milesTraveled: Int
     let message: String
+    let visualEvent: VisualEvent?
     let endingTitle: String?
     let endingDetail: String?
     let endingSummary: [String]
@@ -43,6 +44,7 @@ struct TrailPresentationSnapshot {
         nextLandmarkName = nextLandmark?.name
         milesTraveled = simulation.milesTraveled
         message = latestEvent
+        visualEvent = simulation.latestVisualEvent
 
         switch simulation.outcome {
         case .reachedOregon:
@@ -131,6 +133,7 @@ final class TrailScene: SKScene {
     private let terrainNode = SKNode()
     private let landmarkNode = SKNode()
     private let fxNode = SKNode()
+    private let eventNode = SKNode()
     private var lastTerrain: Terrain?
 
     private var statusLabels: [SKLabelNode] = []
@@ -162,6 +165,8 @@ final class TrailScene: SKScene {
         addChild(terrainNode)
         addChild(landmarkNode)
         addChild(fxNode)
+        eventNode.zPosition = 10
+        addChild(eventNode)
 
         // Wagon + ox, 2-frame walk cycle
         wagonFrames = [pixelTexture(rows: Self.wagon(phase: 0), palette: Self.wagonPalette),
@@ -236,6 +241,7 @@ final class TrailScene: SKScene {
         }
         rebuildLandmarkApproach(snapshot)
         rebuildWeather(for: snapshot)
+        rebuildEvent(snapshot.visualEvent)
 
         if snapshot.endingTitle != nil {
             renderEndScene(snapshot)
@@ -325,6 +331,510 @@ final class TrailScene: SKScene {
         let limit = 68
         guard text.count > limit else { return text }
         return String(text.prefix(limit - 3)) + "..."
+    }
+
+    // MARK: - Event vignettes
+
+    private enum EventActionKey {
+        static let motion = "event.motion"
+        static let blink = "event.blink"
+    }
+
+    /// Event art is replaced as a single day-level layer. Actions are keyed so a
+    /// fast pace can never leave a river bob, muzzle flash, or wolf blink running
+    /// after the next snapshot arrives.
+    private func rebuildEvent(_ event: VisualEvent?) {
+        eventNode.removeAllActions()
+        eventNode.enumerateChildNodes(withName: "//*") { node, _ in
+            node.removeAllActions()
+        }
+        eventNode.removeAllChildren()
+        wagonSprite.removeAction(forKey: EventActionKey.motion)
+        wagonSprite.isHidden = false
+        wagonSprite.alpha = 1
+        wagonSprite.zRotation = 0
+        wagonSprite.position = CGPoint(x: size.width - 20, y: groundTopY)
+
+        guard let event else { return }
+
+        switch event {
+        case .illness(_, let ailment):
+            renderIllness(ailment)
+        case .hunt(let outcome):
+            renderHunt(outcome)
+        case .trailOpportunity(let item):
+            renderTrailOpportunity(item)
+        case .wolves(let oxLost):
+            renderWolves(oxLost: oxLost)
+        case .wagonBreakdown(let part, let repaired):
+            renderBreakdown(part: part, repaired: repaired)
+        case .snakebite(let outcome):
+            renderSnakebite(outcome)
+        case .spring:
+            renderSpring()
+        case .regionalTrade:
+            renderTrade()
+        case .weatherWorsening:
+            renderWeatherWorsening()
+        case .ambient(let moment):
+            renderAmbient(moment)
+        case .riverCrossing(_, let outcome):
+            renderRiverCrossing(outcome)
+        }
+    }
+
+    private func eventSprite(
+        rows: [String],
+        palette: [Character: NSColor],
+        scale: CGFloat = 1,
+        position: CGPoint,
+        anchorPoint: CGPoint = .zero,
+        z: CGFloat = 1
+    ) -> SKSpriteNode {
+        let sprite = pixelNode(rows: rows, palette: palette, scale: scale)
+        sprite.anchorPoint = anchorPoint
+        sprite.position = position
+        sprite.zPosition = z
+        eventNode.addChild(sprite)
+        return sprite
+    }
+
+    /// Moves only by whole logical pixels, preserving the nearest-neighbor edge.
+    private func steppedLoop(_ deltas: [CGVector], wait: TimeInterval = 0.10) -> SKAction {
+        let steps = deltas.flatMap { delta in
+            [SKAction.moveBy(x: delta.dx, y: delta.dy, duration: 0), .wait(forDuration: wait)]
+        }
+        return .repeatForever(.sequence(steps))
+    }
+
+    private func blinkLoop(on: TimeInterval = 0.12, off: TimeInterval = 0.12) -> SKAction {
+        .repeatForever(.sequence([
+            .unhide(), .wait(forDuration: on), .hide(), .wait(forDuration: off),
+        ]))
+    }
+
+    private var eventPalette: [Character: NSColor] {
+        [
+            "W": paperWhite,
+            "O": dustOrange,
+            "B": artifactBlue,
+            "G": grassGreen,
+            "P": mountainPurple,
+            "K": inkBlack,
+        ]
+    }
+
+    private func renderBreakdown(part: WagonPart, repaired: Bool) {
+        wagonSprite.isHidden = true
+        let scene = eventSprite(
+            rows: Self.breakdown(part: part, repaired: repaired),
+            palette: eventPalette,
+            position: CGPoint(x: 205, y: groundTopY - 1)
+        )
+        scene.run(
+            steppedLoop([CGVector(dx: 0, dy: 1), CGVector(dx: 0, dy: -1)], wait: 0.16),
+            withKey: EventActionKey.motion
+        )
+
+        let toolFlash = eventSprite(
+            rows: ["W.", ".O"],
+            palette: eventPalette,
+            scale: 2,
+            position: CGPoint(x: 279, y: groundTopY + 30),
+            z: 2
+        )
+        toolFlash.run(blinkLoop(on: repaired ? 0.14 : 0.07, off: 0.18), withKey: EventActionKey.blink)
+    }
+
+    private func renderRiverCrossing(_ outcome: RiverCrossingOutcome) {
+        wagonSprite.isHidden = true
+        let water = eventSprite(
+            rows: Self.riverWater(),
+            palette: eventPalette,
+            scale: 2,
+            position: CGPoint(x: 4, y: groundBottomY),
+            z: 0
+        )
+        water.run(
+            steppedLoop([CGVector(dx: 2, dy: 0), CGVector(dx: -2, dy: 0)], wait: 0.14),
+            withKey: EventActionKey.motion
+        )
+
+        let wagon = eventSprite(
+            rows: Self.riverWagon(outcome),
+            palette: eventPalette,
+            position: CGPoint(x: 211, y: groundTopY - 13),
+            z: 3
+        )
+
+        switch outcome {
+        case .success:
+            wagon.run(
+                steppedLoop([CGVector(dx: -2, dy: 1), CGVector(dx: 2, dy: -1)], wait: 0.11),
+                withKey: EventActionKey.motion
+            )
+        case .suppliesLost:
+            wagon.run(
+                steppedLoop([CGVector(dx: -1, dy: 1), CGVector(dx: 1, dy: -1)], wait: 0.11),
+                withKey: EventActionKey.motion
+            )
+            let crate = eventSprite(
+                rows: Self.crate(),
+                palette: eventPalette,
+                position: CGPoint(x: 230, y: groundTopY - 22),
+                z: 4
+            )
+            let start = crate.position
+            crate.run(.repeatForever(.sequence([
+                .moveBy(x: -5, y: 1, duration: 0), .wait(forDuration: 0.10),
+                .moveBy(x: -5, y: -1, duration: 0), .wait(forDuration: 0.10),
+                .moveBy(x: -5, y: 1, duration: 0), .wait(forDuration: 0.10),
+                .run { [weak crate] in crate?.position = start },
+            ])), withKey: EventActionKey.motion)
+        case .travelerLost:
+            wagon.run(
+                steppedLoop([CGVector(dx: -1, dy: -2), CGVector(dx: 1, dy: 2)], wait: 0.11),
+                withKey: EventActionKey.motion
+            )
+        case .impassable:
+            let foam = eventSprite(
+                rows: ["WW..WW..WW..WW", "..WW..WW..WW.."],
+                palette: eventPalette,
+                scale: 2,
+                position: CGPoint(x: 180, y: groundTopY - 17),
+                z: 4
+            )
+            foam.run(blinkLoop(on: 0.16, off: 0.16), withKey: EventActionKey.blink)
+        }
+    }
+
+    private func renderHunt(_ outcome: HuntOutcome) {
+        for (index, x) in [22, 61, 98].enumerated() {
+            let buffalo = eventSprite(
+                rows: Self.buffalo(phase: index % 2),
+                palette: eventPalette,
+                position: CGPoint(x: CGFloat(x), y: groundTopY + CGFloat(17 - index * 4)),
+                z: 1
+            )
+            buffalo.run(
+                steppedLoop([CGVector(dx: -2, dy: 0), CGVector(dx: 2, dy: 0)], wait: 0.15),
+                withKey: EventActionKey.motion
+            )
+        }
+
+        let hunter = eventSprite(
+            rows: Self.hunter(),
+            palette: eventPalette,
+            position: CGPoint(x: 187, y: groundTopY),
+            z: 3
+        )
+
+        switch outcome {
+        case .success:
+            let flash = eventSprite(
+                rows: [".O.", "OWO", ".O."],
+                palette: eventPalette,
+                position: CGPoint(x: 180, y: groundTopY + 15),
+                z: 4
+            )
+            flash.run(blinkLoop(on: 0.06, off: 0.24), withKey: EventActionKey.blink)
+            hunter.run(
+                steppedLoop([CGVector(dx: 1, dy: 0), CGVector(dx: -1, dy: 0)], wait: 0.15),
+                withKey: EventActionKey.motion
+            )
+        case .noAmmunition:
+            let empty = eventSprite(
+                rows: ["O...O", ".O.O.", "..O..", ".O.O.", "O...O"],
+                palette: eventPalette,
+                position: CGPoint(x: 178, y: groundTopY + 12),
+                z: 4
+            )
+            empty.run(blinkLoop(on: 0.18, off: 0.12), withKey: EventActionKey.blink)
+        }
+    }
+
+    private func renderTrailOpportunity(_ item: TrailOpportunityItem) {
+        let wreck = eventSprite(
+            rows: Self.abandonedWagon(),
+            palette: eventPalette,
+            position: CGPoint(x: 73, y: groundTopY),
+            z: 1
+        )
+        wreck.run(
+            steppedLoop([CGVector(dx: 0, dy: 1), CGVector(dx: 0, dy: -1)], wait: 0.18),
+            withKey: EventActionKey.motion
+        )
+        let rows: [String] = switch item {
+        case .food: Self.foodSack()
+        case .spareWheel: Self.looseWheel()
+        case .spareAxle: Self.spareAxle()
+        case .clothing: Self.coat()
+        }
+        let found = eventSprite(
+            rows: rows,
+            palette: eventPalette,
+            scale: 2,
+            position: CGPoint(x: 147, y: groundTopY + 1),
+            z: 3
+        )
+        found.run(blinkLoop(on: 0.20, off: 0.08), withKey: EventActionKey.blink)
+    }
+
+    private func renderWolves(oxLost _: Bool) {
+        let dusk = SKSpriteNode(color: inkBlack, size: CGSize(width: size.width - 8, height: 10))
+        dusk.anchorPoint = .zero
+        dusk.position = CGPoint(x: 4, y: groundTopY + 25)
+        dusk.zPosition = 0
+        eventNode.addChild(dusk)
+
+        for (index, x) in [44, 86, 132].enumerated() {
+            let wolf = eventSprite(
+                rows: Self.wolf(eyes: index != 1),
+                palette: eventPalette,
+                position: CGPoint(x: CGFloat(x), y: groundTopY + CGFloat(7 + index * 3)),
+                z: 2
+            )
+            wolf.run(
+                steppedLoop([CGVector(dx: 2, dy: 0), CGVector(dx: -2, dy: 0)], wait: 0.14),
+                withKey: EventActionKey.motion
+            )
+        }
+    }
+
+    private func renderIllness(_ ailment: Ailment) {
+        let camp = eventSprite(
+            rows: Self.illnessCamp(ailment),
+            palette: eventPalette,
+            scale: 2,
+            position: CGPoint(x: 84, y: groundTopY),
+            z: 2
+        )
+        camp.run(
+            steppedLoop([CGVector(dx: 0, dy: 1), CGVector(dx: 0, dy: -1)], wait: 0.18),
+            withKey: EventActionKey.motion
+        )
+        let fire = eventSprite(
+            rows: [".O.", "OWO", ".O."],
+            palette: eventPalette,
+            position: CGPoint(x: 132, y: groundTopY + 1),
+            z: 3
+        )
+        fire.run(blinkLoop(on: 0.10, off: 0.10), withKey: EventActionKey.blink)
+    }
+
+    private func renderSnakebite(_ outcome: SnakebiteOutcome) {
+        let snake = eventSprite(
+            rows: Self.snake(),
+            palette: eventPalette,
+            scale: 2,
+            position: CGPoint(x: 178, y: groundTopY),
+            z: 3
+        )
+        snake.run(
+            steppedLoop([CGVector(dx: 2, dy: 0), CGVector(dx: -2, dy: 0)], wait: 0.12),
+            withKey: EventActionKey.motion
+        )
+        if case .struck = outcome {
+            let strike = eventSprite(
+                rows: ["O..", ".O.", "..O"],
+                palette: eventPalette,
+                scale: 2,
+                position: CGPoint(x: 197, y: groundTopY + 8),
+                z: 4
+            )
+            strike.run(blinkLoop(on: 0.08, off: 0.16), withKey: EventActionKey.blink)
+        }
+    }
+
+    private func renderSpring() {
+        let spring = eventSprite(
+            rows: Self.springScene(),
+            palette: eventPalette,
+            scale: 2,
+            position: CGPoint(x: 60, y: groundTopY - 3),
+            z: 2
+        )
+        spring.run(
+            steppedLoop([CGVector(dx: 2, dy: 0), CGVector(dx: -2, dy: 0)], wait: 0.15),
+            withKey: EventActionKey.motion
+        )
+    }
+
+    private func renderTrade() {
+        let camp = eventSprite(
+            rows: Self.tradeCamp(),
+            palette: eventPalette,
+            position: CGPoint(x: 39, y: groundTopY),
+            z: 2
+        )
+        camp.run(
+            steppedLoop([CGVector(dx: 0, dy: 1), CGVector(dx: 0, dy: -1)], wait: 0.18),
+            withKey: EventActionKey.motion
+        )
+        let parcel = eventSprite(
+            rows: Self.crate(),
+            palette: eventPalette,
+            position: CGPoint(x: 172, y: groundTopY + 7),
+            z: 3
+        )
+        parcel.run(
+            steppedLoop([CGVector(dx: 3, dy: 0), CGVector(dx: -3, dy: 0)], wait: 0.14),
+            withKey: EventActionKey.motion
+        )
+    }
+
+    private func renderWeatherWorsening() {
+        let clouds = eventSprite(
+            rows: Self.squallClouds(),
+            palette: eventPalette,
+            scale: 2,
+            position: CGPoint(x: 18, y: groundTopY + 34),
+            z: 2
+        )
+        clouds.run(
+            steppedLoop([CGVector(dx: 2, dy: 0), CGVector(dx: -2, dy: 0)], wait: 0.14),
+            withKey: EventActionKey.motion
+        )
+        let bolt = eventSprite(
+            rows: Self.lightningBolt(),
+            palette: eventPalette,
+            scale: 2,
+            position: CGPoint(x: 142, y: groundTopY + 17),
+            z: 3
+        )
+        bolt.run(blinkLoop(on: 0.05, off: 0.24), withKey: EventActionKey.blink)
+    }
+
+    private func renderAmbient(_ moment: AmbientMoment) {
+        switch moment {
+        case .prairieGrass:
+            renderPrairieGrass()
+        case .buffaloHerd:
+            for (index, x) in [28, 58, 91, 125].enumerated() {
+                let buffalo = eventSprite(
+                    rows: Self.buffalo(phase: index % 2),
+                    palette: eventPalette,
+                    position: CGPoint(x: CGFloat(x), y: groundTopY + CGFloat(17 - index * 3)),
+                    z: 1
+                )
+                buffalo.run(
+                    steppedLoop([CGVector(dx: -2, dy: 0), CGVector(dx: 2, dy: 0)], wait: 0.16),
+                    withKey: EventActionKey.motion
+                )
+            }
+        case .cottonwoodLeaves:
+            renderCottonwoodLeaves()
+        case .fallingStone:
+            renderFallingStone()
+        case .longShadows:
+            let shadows = eventSprite(
+                rows: Self.longShadows(),
+                palette: eventPalette,
+                scale: 2,
+                position: CGPoint(x: 10, y: groundTopY + 4),
+                z: 2
+            )
+            shadows.run(blinkLoop(on: 0.20, off: 0.08), withKey: EventActionKey.blink)
+        case .lowClouds:
+            let clouds = eventSprite(
+                rows: Self.lowClouds(),
+                palette: eventPalette,
+                scale: 2,
+                position: CGPoint(x: 20, y: groundTopY + 31),
+                z: 2
+            )
+            clouds.run(
+                steppedLoop([CGVector(dx: 2, dy: 0), CGVector(dx: -2, dy: 0)], wait: 0.17),
+                withKey: EventActionKey.motion
+            )
+        case .rainTracks:
+            renderTracks(color: artifactBlue)
+        case .lightning:
+            let bolt = eventSprite(
+                rows: Self.lightningBolt(),
+                palette: eventPalette,
+                scale: 3,
+                position: CGPoint(x: 105, y: groundTopY + 8),
+                z: 4
+            )
+            bolt.run(blinkLoop(on: 0.05, off: 0.22), withKey: EventActionKey.blink)
+        case .snowRuts:
+            renderTracks(color: paperWhite)
+        case .heatShimmer:
+            let shimmer = eventSprite(
+                rows: Self.heatShimmer(),
+                palette: eventPalette,
+                scale: 2,
+                position: CGPoint(x: 13, y: groundTopY + 14),
+                z: 2
+            )
+            shimmer.run(
+                steppedLoop([CGVector(dx: 2, dy: 0), CGVector(dx: -4, dy: 0), CGVector(dx: 2, dy: 0)], wait: 0.09),
+                withKey: EventActionKey.motion
+            )
+        case .frostGrass:
+            let frost = eventSprite(
+                rows: Self.frostGrass(),
+                palette: eventPalette,
+                scale: 2,
+                position: CGPoint(x: 8, y: groundTopY),
+                z: 2
+            )
+            frost.run(blinkLoop(on: 0.18, off: 0.08), withKey: EventActionKey.blink)
+        }
+    }
+
+    private func renderPrairieGrass() {
+        let grass = eventSprite(
+            rows: Self.tallGrass(),
+            palette: eventPalette,
+            scale: 2,
+            position: CGPoint(x: 8, y: groundTopY),
+            z: 2
+        )
+        grass.run(
+            steppedLoop([CGVector(dx: 1, dy: 0), CGVector(dx: -1, dy: 0)], wait: 0.16),
+            withKey: EventActionKey.motion
+        )
+    }
+
+    private func renderCottonwoodLeaves() {
+        let leaves = eventSprite(
+            rows: Self.cottonwoodLeaves(),
+            palette: eventPalette,
+            scale: 2,
+            position: CGPoint(x: 20, y: groundTopY + 8),
+            z: 2
+        )
+        leaves.run(blinkLoop(on: 0.12, off: 0.10), withKey: EventActionKey.blink)
+    }
+
+    private func renderFallingStone() {
+        for (index, start) in [CGPoint(x: 46, y: 170), CGPoint(x: 78, y: 180), CGPoint(x: 110, y: 166)].enumerated() {
+            let stone = SKSpriteNode(color: index == 1 ? dustOrange : paperWhite,
+                                     size: CGSize(width: 3, height: 3))
+            stone.position = start
+            stone.zPosition = 3
+            eventNode.addChild(stone)
+            stone.run(.repeatForever(.sequence([
+                .moveBy(x: 5, y: -7, duration: 0), .wait(forDuration: 0.10),
+                .moveBy(x: 5, y: -7, duration: 0), .wait(forDuration: 0.10),
+                .moveBy(x: 5, y: -7, duration: 0), .wait(forDuration: 0.10),
+                .run { [weak stone] in stone?.position = start },
+            ])), withKey: EventActionKey.motion)
+        }
+    }
+
+    private func renderTracks(color: NSColor) {
+        let trackPalette = eventPalette.merging(["T": color]) { _, new in new }
+        let tracks = eventSprite(
+            rows: Self.wagonTracks(),
+            palette: trackPalette,
+            scale: 2,
+            position: CGPoint(x: 18, y: groundBottomY + 3),
+            z: 2
+        )
+        tracks.run(blinkLoop(on: 0.18, off: 0.09), withKey: EventActionKey.blink)
     }
 
     // MARK: - End screen
@@ -494,6 +1004,308 @@ final class TrailScene: SKScene {
             c.rect(11, 14, 6, 6, "B")
             c.rect(3, 7, 4, 2, "O")
             c.rect(21, 7, 4, 2, "O")
+        }
+        return c.rows
+    }
+
+    // MARK: Event sprite art
+
+    static func breakdown(part: WagonPart, repaired: Bool) -> [String] {
+        var c = PixelCanvas(w: 100, h: 30)
+        ox(&c, x: 1, phase: 0)
+        c.rect(20, 13, 12, 1, "W")
+        c.rect(34, 10, 34, 6, "O")
+        c.rect(38, 2, 26, 1, "W")
+        c.rect(36, 3, 30, 7, "W")
+        c.rect(36, 8, 30, 2, "B")
+
+        switch part {
+        case .wheel:
+            wheel(&c, 38, 16)
+            c.line(from: (60, 17), to: (67, 23), "O")
+            c.line(from: (67, 17), to: (60, 23), "O")
+            wheel(&c, 79, 20)
+        case .axle:
+            wheel(&c, 38, 16)
+            wheel(&c, 58, 16)
+            c.line(from: (43, 19), to: (62, 23), "O")
+            c.line(from: (52, 18), to: (49, 24), "O")
+        case .tongue:
+            wheel(&c, 38, 16)
+            wheel(&c, 58, 16)
+            c.rect(20, 13, 5, 1, "W")
+            c.rect(28, 13, 5, 1, "W")
+            c.rect(25, 12, 1, 3, "O")
+            c.rect(27, 12, 1, 3, "O")
+        }
+
+        // Kneeling repair figure and small hand tool.
+        c.rect(72, 15, 4, 4, "W")
+        c.rect(70, 19, 6, 5, repaired ? "G" : "O")
+        c.line(from: (70, 22), to: (66, 26), "W")
+        c.line(from: (74, 23), to: (79, 26), "W")
+        c.line(from: (70, 20), to: (64, 22), "B")
+        return c.rows
+    }
+
+    static func riverWater() -> [String] {
+        var c = PixelCanvas(w: 154, h: 20)
+        c.rect(0, 0, 154, 20, "B")
+        for y in stride(from: 2, to: 20, by: 4) {
+            for x in stride(from: (y / 2) % 4, to: 154, by: 12) {
+                c.rect(x, y, 5, 1, "W")
+            }
+        }
+        return c.rows
+    }
+
+    static func riverWagon(_ outcome: RiverCrossingOutcome) -> [String] {
+        var c = PixelCanvas(w: 78, h: 29)
+        ox(&c, x: 1, phase: 1)
+        c.rect(20, 13, 14, 1, "W")
+        c.rect(34, 10, 34, 6, "O")
+        c.rect(38, 2, 26, 1, "W")
+        c.rect(36, 3, 30, 7, "W")
+        c.rect(36, 8, 30, 2, "B")
+        wheel(&c, 38, 16)
+        wheel(&c, 58, 16)
+        c.rect(0, 23, 78, 4, "B")
+        for x in stride(from: 0, to: 78, by: 9) { c.rect(x, 23, 4, 1, "W") }
+
+        switch outcome {
+        case .travelerLost:
+            c.line(from: (43, 4), to: (61, 17), "O")
+            c.line(from: (61, 4), to: (43, 17), "O")
+        case .impassable:
+            c.rect(67, 19, 3, 8, "W")
+            c.rect(72, 17, 3, 10, "W")
+        case .success, .suppliesLost:
+            break
+        }
+        return c.rows
+    }
+
+    static func crate() -> [String] {
+        [
+            "OOOOOOOO",
+            "OW....WO",
+            "O.W..W.O",
+            "O..WW..O",
+            "OW....WO",
+            "OOOOOOOO",
+        ]
+    }
+
+    static func buffalo(phase: Int) -> [String] {
+        var c = PixelCanvas(w: 25, h: 13)
+        c.rect(5, 3, 14, 6, "P")
+        c.rect(3, 4, 5, 5, "P")
+        c.rect(1, 5, 3, 4, "P")
+        c.rect(0, 4, 2, 1, "O")
+        c.rect(1, 3, 1, 1, "W")
+        c.rect(18, 5, 5, 4, "P")
+        c.rect(22, 4, 2, 1, "O")
+        c.rect(7, 9, 2, phase == 0 ? 4 : 3, "P")
+        c.rect(16, 9, 2, phase == 0 ? 3 : 4, "P")
+        return c.rows
+    }
+
+    static func hunter() -> [String] {
+        var c = PixelCanvas(w: 17, h: 20)
+        c.rect(10, 1, 4, 4, "W")
+        c.rect(8, 5, 7, 8, "O")
+        c.line(from: (8, 7), to: (2, 11), "W")
+        c.line(from: (8, 9), to: (1, 9), "W")
+        c.rect(0, 8, 9, 1, "B")
+        c.line(from: (10, 13), to: (7, 19), "W")
+        c.line(from: (13, 13), to: (16, 19), "W")
+        return c.rows
+    }
+
+    static func abandonedWagon() -> [String] {
+        var c = PixelCanvas(w: 68, h: 25)
+        c.rect(18, 11, 39, 5, "O")
+        c.line(from: (23, 10), to: (28, 3), "W")
+        c.line(from: (28, 3), to: (45, 6), "W")
+        c.line(from: (45, 6), to: (53, 11), "W")
+        c.line(from: (2, 15), to: (18, 13), "W")
+        wheel(&c, 22, 16)
+        c.line(from: (48, 17), to: (55, 23), "O")
+        c.line(from: (55, 17), to: (48, 23), "O")
+        c.rect(59, 15, 5, 5, "B")
+        return c.rows
+    }
+
+    static func foodSack() -> [String] {
+        [".OOO.", ".OWO.", "OOOOO", "OWWWO", "OWWWO", ".OOO."]
+    }
+
+    static func looseWheel() -> [String] {
+        [".WWW.", "W.O.W", "WOOOW", "W.O.W", ".WWW."]
+    }
+
+    static func spareAxle() -> [String] {
+        ["W.........W", "WWWWWWWWWWW", "W.........W"]
+    }
+
+    static func coat() -> [String] {
+        [".O...O.", "OOOOOOO", "OOWWWOO", ".OWWWO.", ".OWWWO.", ".OOOOO."]
+    }
+
+    static func wolf(eyes: Bool) -> [String] {
+        var c = PixelCanvas(w: 28, h: 12)
+        c.rect(5, 4, 14, 5, "P")
+        c.rect(18, 2, 7, 6, "P")
+        c.rect(19, 0, 2, 3, "P")
+        c.rect(24, 0, 2, 3, "P")
+        c.rect(24, 5, 4, 3, "P")
+        c.line(from: (5, 4), to: (0, 1), "P")
+        c.rect(7, 9, 2, 3, "P")
+        c.rect(16, 9, 2, 3, "P")
+        if eyes { c.rect(21, 4, 1, 1, "W"); c.rect(24, 4, 1, 1, "O") }
+        return c.rows
+    }
+
+    static func illnessCamp(_ ailment: Ailment) -> [String] {
+        var c = PixelCanvas(w: 34, h: 18)
+        let blanket: Character = switch ailment {
+        case .dysentery, .cholera: "B"
+        case .typhoid, .injury: "O"
+        case .measles: "P"
+        case .snakebite: "G"
+        case .exhaustion: "W"
+        }
+        c.rect(4, 10, 24, 6, blanket)
+        c.rect(7, 8, 6, 4, "W")
+        c.rect(2, 16, 30, 1, "W")
+        c.rect(17, 11, 1, 1, "W")
+        c.rect(22, 13, 1, 1, "W")
+        return c.rows
+    }
+
+    static func snake() -> [String] {
+        [
+            "..........OOO..",
+            "..OOO...OO.OOO.",
+            ".OO.OO.OO....O.",
+            "OO...OOO.......",
+            ".O.............",
+        ]
+    }
+
+    static func springScene() -> [String] {
+        var c = PixelCanvas(w: 54, h: 20)
+        c.rect(0, 15, 54, 3, "G")
+        c.rect(6, 11, 13, 4, "W")
+        c.rect(10, 8, 8, 3, "W")
+        c.rect(16, 12, 7, 3, "B")
+        c.line(from: (19, 13), to: (32, 17), "B")
+        c.rect(27, 16, 24, 2, "B")
+        c.rect(37, 4, 2, 12, "W")
+        c.rect(31, 5, 14, 5, "G")
+        c.rect(28, 7, 19, 3, "G")
+        for x in stride(from: 27, to: 52, by: 6) { c.rect(x, 17, 3, 1, "W") }
+        return c.rows
+    }
+
+    static func tradeCamp() -> [String] {
+        var c = PixelCanvas(w: 130, h: 25)
+        c.line(from: (2, 22), to: (18, 6), "W")
+        c.line(from: (18, 6), to: (34, 22), "W")
+        c.rect(8, 18, 21, 4, "O")
+        c.rect(48, 8, 5, 5, "W")
+        c.rect(46, 13, 9, 7, "P")
+        c.line(from: (48, 20), to: (44, 24), "W")
+        c.line(from: (53, 20), to: (57, 24), "W")
+        c.rect(76, 8, 5, 5, "W")
+        c.rect(74, 13, 9, 7, "O")
+        c.line(from: (76, 20), to: (72, 24), "W")
+        c.line(from: (81, 20), to: (85, 24), "W")
+        c.rect(101, 17, 7, 5, "O")
+        c.rect(112, 15, 10, 7, "B")
+        return c.rows
+    }
+
+    static func squallClouds() -> [String] {
+        var c = PixelCanvas(w: 70, h: 16)
+        c.rect(5, 8, 56, 6, "P")
+        c.rect(13, 4, 20, 6, "P")
+        c.rect(38, 2, 17, 8, "P")
+        c.rect(58, 10, 11, 4, "P")
+        c.rect(1, 13, 64, 2, "B")
+        return c.rows
+    }
+
+    static func lightningBolt() -> [String] {
+        ["....WW", "...WW.", "..WW..", "...WW.", "..WW..", ".WW...", "WW...."]
+    }
+
+    static func tallGrass() -> [String] {
+        var c = PixelCanvas(w: 94, h: 12)
+        for x in stride(from: 1, to: 94, by: 5) {
+            c.line(from: (x, 11), to: (x + (x % 3) - 1, x % 5), "W")
+            c.line(from: (x, 8), to: (x + 3, 5), "O")
+        }
+        return c.rows
+    }
+
+    static func cottonwoodLeaves() -> [String] {
+        var c = PixelCanvas(w: 80, h: 22)
+        c.rect(3, 18, 75, 3, "B")
+        c.rect(14, 5, 2, 13, "W")
+        c.rect(10, 2, 12, 7, "G")
+        c.rect(34, 7, 2, 11, "W")
+        c.rect(29, 4, 14, 7, "G")
+        c.rect(56, 6, 2, 12, "W")
+        c.rect(51, 2, 15, 8, "G")
+        for point in [(8, 1), (24, 5), (44, 1), (70, 7), (48, 11), (27, 13)] {
+            c.rect(point.0, point.1, 2, 1, "W")
+        }
+        return c.rows
+    }
+
+    static func longShadows() -> [String] {
+        var c = PixelCanvas(w: 140, h: 16)
+        for y in stride(from: 1, to: 16, by: 4) {
+            c.line(from: (4 + y, y), to: (118 + y, y + 4), "O")
+        }
+        return c.rows
+    }
+
+    static func lowClouds() -> [String] {
+        var c = PixelCanvas(w: 120, h: 14)
+        c.rect(4, 7, 45, 5, "W")
+        c.rect(13, 4, 24, 4, "W")
+        c.rect(57, 5, 55, 6, "P")
+        c.rect(72, 2, 26, 5, "P")
+        return c.rows
+    }
+
+    static func heatShimmer() -> [String] {
+        var c = PixelCanvas(w: 140, h: 12)
+        for y in stride(from: 1, to: 12, by: 3) {
+            for x in stride(from: y * 2, to: 140, by: 18) {
+                c.line(from: (x, y), to: (min(139, x + 8), y + 1), "O")
+            }
+        }
+        return c.rows
+    }
+
+    static func frostGrass() -> [String] {
+        var c = PixelCanvas(w: 145, h: 12)
+        for x in stride(from: 1, to: 145, by: 5) {
+            c.line(from: (x, 11), to: (x + (x % 2), 3 + (x % 4)), "W")
+            c.rect(x - 1, 3 + (x % 4), 3, 1, "B")
+        }
+        return c.rows
+    }
+
+    static func wagonTracks() -> [String] {
+        var c = PixelCanvas(w: 140, h: 15)
+        c.line(from: (0, 14), to: (139, 5), "T")
+        c.line(from: (0, 7), to: (139, 1), "T")
+        for x in stride(from: 5, to: 135, by: 12) {
+            c.rect(x, max(1, 13 - x / 18), 6, 1, "T")
         }
         return c.rows
     }

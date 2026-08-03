@@ -2,6 +2,16 @@
 
 Cornerworld follows [Semantic Versioning](https://semver.org/).
 
+## 1.1.0 — 2026-08-03
+
+### Added
+
+- Typed deterministic visual events shared by the Overland simulation and its
+  SpriteKit presentation.
+- Pixel-art event vignettes for river crossings, wagon breakdowns, hunting,
+  illness, wolves, salvage, snakebite, springs, trade, weather, and ambient
+  trail moments.
+
 ## 1.0.0 — 2026-08-02
 
 ### Added

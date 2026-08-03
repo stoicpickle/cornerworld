@@ -43,7 +43,7 @@ while i < args.count {
         }
         pauseSeconds = parsed
     case "--version":
-        print("Cornerworld 1.0.0")
+        print("Cornerworld 1.1.0")
         exit(EXIT_SUCCESS)
     case "--help", "-h":
         printHelp()
