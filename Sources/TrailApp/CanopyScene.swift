@@ -181,7 +181,9 @@ final class CanopyScene: SKScene {
             }
 
             if vine.hasFlower {
-                let topY = Int(Layout.worldBottom) + min(vine.height, CanopySimulation.maximumVineHeight) - 3
+                let uncappedTopY = Int(Layout.worldBottom)
+                    + min(vine.height, CanopySimulation.maximumVineHeight) - 3
+                let topY = min(uncappedTopY, Int(size.height) - 6)
                 let topX = vineX(vine: vine, step: max(0, steps - 1))
                 drawPixels(
                     [".R.", "RWR", ".R."],

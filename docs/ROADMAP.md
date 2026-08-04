@@ -14,13 +14,14 @@ surface, deterministic continuity, and occasional meaningful intervention.
 
 ## The multi-world test
 
-A farm is now the working second scenario. It changes the time scale, resources,
-visual grammar, and meaning of continuity, giving the project two concrete
-implementations to compare. Its design and delivery slices are captured in the
-[Farm scenario proposal](FARM_SCENARIO.md).
+Farm and Canopy are now working second and third scenarios. Farm changes the
+time scale, resources, visual grammar, and meaning of continuity; Canopy adds
+an open-ended ambient animation without an economy or terminal outcome. Their
+design boundaries are captured in the [Farm scenario proposal](FARM_SCENARIO.md)
+and [Canopy scenario note](CANOPY_SCENARIO.md).
 
-Only after two working scenarios should the project extract a shared scenario
-protocol for:
+With three concrete worlds to compare, shared abstractions should be extracted
+only where all three demonstrate the same responsibility, including:
 
 - simulation clocks and snapshots;
 - compact controls and journal entries;
@@ -30,9 +31,5 @@ protocol for:
 The goal is a small, understandable host for authored worlds—not a general game
 engine or a speculative plugin framework.
 
-Canopy now adds a third comparison point: an open-ended ambient animation with
-no economy or terminal outcome. Its design and historical boundary are captured
-in the [Canopy scenario note](CANOPY_SCENARIO.md). Farm and Canopy should remain
-concrete host clients while persistence and lifecycle needs become clearer;
-shared abstractions should be extracted only where all three worlds demonstrate
-the same responsibility.
+Farm and Canopy should remain concrete host clients while persistence and
+lifecycle needs become clearer.

@@ -27,6 +27,7 @@ private struct CanopyRNG: Equatable, Sendable {
 public struct CanopySimulation: Equatable, Sendable {
     public static let maximumVineHeight = 142
     public static let maximumVines = 9
+    public static let eventLogLimit = 64
 
     public private(set) var state: CanopyState
 
@@ -89,7 +90,7 @@ public struct CanopySimulation: Equatable, Sendable {
         if messages.isEmpty {
             messages.append("The vines climb another little way.")
         }
-        state.eventLog.append(contentsOf: messages)
+        record(messages)
         return messages
     }
 
@@ -101,7 +102,7 @@ public struct CanopySimulation: Equatable, Sendable {
         }
         state.latestVisualEvent = .pruned
         let message = "The oldest growth is pruned back to make room for new vines."
-        state.eventLog.append(message)
+        record([message])
         return message
     }
 
@@ -156,7 +157,7 @@ public struct CanopySimulation: Equatable, Sendable {
         let outcome: CanopySwingOutcome
         if collision {
             outcome = .wallImpact(side: direction)
-            messages.append("The canopy wanderer clips the (direction.rawValue) edge and slides down.")
+            messages.append("The canopy wanderer clips the \(direction.rawValue) edge and slides down.")
         } else {
             outcome = .clean(direction: direction)
             messages.append("A wild whoop crosses the canopy as the wanderer swings past.")
@@ -173,5 +174,13 @@ public struct CanopySimulation: Equatable, Sendable {
         }
         state.latestVisualEvent = .rain
         messages.append("Warm rain sends fresh green growth toward the canopy.")
+    }
+
+    private mutating func record(_ messages: [String]) {
+        state.eventLog.append(contentsOf: messages)
+        let excess = state.eventLog.count - Self.eventLogLimit
+        if excess > 0 {
+            state.eventLog.removeFirst(excess)
+        }
     }
 }

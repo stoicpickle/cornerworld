@@ -81,6 +81,29 @@ final class CanopySimulationTests: XCTestCase {
         XCTAssertTrue(simulation.vines.allSatisfy { $0.height >= 8 })
     }
 
+    func testEventLogKeepsOnlyRecentEntriesIncludingPruning() {
+        var simulation = CanopySimulation(seed: 1_993)
+        for _ in 0..<1_000 { simulation.tick() }
+
+        XCTAssertEqual(simulation.eventLog.count, CanopySimulation.eventLogLimit)
+
+        let pruneMessage = simulation.prune()
+        XCTAssertEqual(simulation.eventLog.count, CanopySimulation.eventLogLimit)
+        XCTAssertEqual(simulation.eventLog.last, pruneMessage)
+    }
+
+    func testCollisionMessageNamesTheResolvedEdge() {
+        var simulation = CanopySimulation(seed: 7)
+
+        while true {
+            let messages = simulation.tick()
+            if case .swing(.wallImpact(let side))? = simulation.latestVisualEvent {
+                XCTAssertTrue(messages.last?.contains(side.rawValue) == true)
+                break
+            }
+        }
+    }
+
     func testVisualEventContractIsEquatableAndSendable() {
         func requireSendable<T: Sendable>(_: T.Type) {}
         requireSendable(CanopyVisualEvent.self)
