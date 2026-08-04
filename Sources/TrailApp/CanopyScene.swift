@@ -92,9 +92,23 @@ final class CanopyScene: SKScene {
             }
         }
 
-        let moon = color(0.91, 0.88, 0.62)
-        addRect(x: 281, y: 174, width: 17, height: 17, color: moon, z: 2)
-        addRect(x: 276, y: 179, width: 11, height: 17, color: wall, z: 3)
+        drawPixels(
+            [
+                "...MMM..",
+                "..MMMM..",
+                ".MMMM...",
+                ".MMM....",
+                ".MMM....",
+                ".MMMM...",
+                "..MMMM..",
+                "...MMM..",
+            ],
+            palette: ["M": color(0.96, 0.91, 0.55)],
+            scale: 2,
+            x: 279,
+            y: 174,
+            z: 2
+        )
 
         // Small points of light make the wall feel alive without becoming a sky.
         for index in 0..<10 {
