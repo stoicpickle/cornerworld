@@ -12,7 +12,7 @@ surface, deterministic continuity, and occasional meaningful intervention.
 - Add deterministic visual fixtures for ordinary, landmark, weather, and ending
   states.
 
-## The second-world test
+## The multi-world test
 
 A farm is now the working second scenario. It changes the time scale, resources,
 visual grammar, and meaning of continuity, giving the project two concrete
@@ -29,3 +29,10 @@ protocol for:
 
 The goal is a small, understandable host for authored worlds—not a general game
 engine or a speculative plugin framework.
+
+Canopy now adds a third comparison point: an open-ended ambient animation with
+no economy or terminal outcome. Its design and historical boundary are captured
+in the [Canopy scenario note](CANOPY_SCENARIO.md). Farm and Canopy should remain
+concrete host clients while persistence and lifecycle needs become clearer;
+shared abstractions should be extracted only where all three worlds demonstrate
+the same responsibility.

@@ -18,6 +18,11 @@ The current development build also includes **Farm**, Cornerworld's first
 experiment with a second world: a deterministic year of planting, weather,
 harvest, and winter pressure rendered as a fixed seasonal homestead.
 
+It now also includes an early **Canopy** world: vines steadily claim a moonlit
+wall while rain, flowers, birds, and an original swinging wanderer interrupt the
+growth. Canopy is deliberately open-ended and low-intervention, closer to a
+living desktop animation than a campaign with a win state.
+
 | Farm in summer | Farm in winter |
 | --- | --- |
 | ![A mature wheat field outside the Cornerworld farmhouse and barn](docs/images/farm-summer-mature.png) | ![The Cornerworld farm resting beneath winter snow](docs/images/farm-winter-snow.png) |
@@ -83,6 +88,18 @@ running from the **Worlds** submenu in either menu-bar item:
 swift run cornerworld --world farm --seed 1848 --plan wheat
 swift run cornerworld --world farm --seed 1848 --plan beans --fast
 ```
+
+Canopy can be started the same way:
+
+```sh
+swift run cornerworld --world canopy --seed 1993
+swift run cornerworld --world canopy --seed 1993 --fast
+```
+
+Its menu provides gentle, active, wild, and paused growth modes, pruning, a
+recent-event journal, and an optional original synthesized swing sound. Sound
+starts off. See the [Canopy scenario note](docs/CANOPY_SCENARIO.md) for the
+memory that inspired it and the independent implementation boundary.
 
 Each open world has its own corner window, simulation clock, and menu-bar item.
 Opening another world from that submenu hides the current corner window to
@@ -156,11 +173,12 @@ swift test -c release
 swift build -c release
 ```
 
-Farm's process-owned seasonal and event visual proof does not require Screen
-Recording permission:
+Process-owned seasonal and event visual proof does not require Screen Recording
+permission:
 
 ```sh
 swift run cornerworld --capture-farm-fixtures .build/visual-proof/farm
+swift run cornerworld --capture-canopy-fixtures .build/visual-proof/canopy
 swift run cornerworld --capture-menu-bar-fixtures .build/visual-proof/menu-bar
 ```
 
@@ -173,13 +191,15 @@ recorded in [docs/TOP_BAR_ACCEPTANCE.md](docs/TOP_BAR_ACCEPTANCE.md).
   outcomes.
 - `FarmCore` owns the Farm world's deterministic weekly year, field plans,
   harvest accounting, and winter outcome.
+- `CanopyCore` owns deterministic vine growth, ambient events, swing cadence,
+  and pruning.
 - `DesktopHostCore` owns testable desktop launch parsing and validation.
 - `TrailApp` owns the macOS status items, world launcher, and fixed-resolution
   SpriteKit scenes.
 - `GameCLI` provides a terminal presentation for seeded runs.
 - `FarmCLI` provides a quick terminal proof for seeded Farm years.
 
-Cornerworld now keeps two authored scenarios beside one another, but deliberately
+Cornerworld now keeps three authored scenarios beside one another, but deliberately
 does not extract a shared scenario interface yet. The project does not claim to
 have a plugin system today.
 See [the roadmap](docs/ROADMAP.md) for the intended direction.

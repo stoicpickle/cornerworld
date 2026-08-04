@@ -120,6 +120,9 @@ final class FarmAppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let anotherFarm = NSMenuItem(title: "Open another Farm…", action: #selector(openFarmWorld), keyEquivalent: "")
         anotherFarm.target = self
         worldsMenu.addItem(anotherFarm)
+        let openCanopy = NSMenuItem(title: "Open Canopy…", action: #selector(openCanopyWorld), keyEquivalent: "")
+        openCanopy.target = self
+        worldsMenu.addItem(openCanopy)
         worlds.submenu = worldsMenu
         menu.addItem(worlds)
 
@@ -179,6 +182,12 @@ final class FarmAppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     @objc private func openFarmWorld() {
         if WorldLauncher.open(.farm) {
+            window.orderOut(nil)
+        }
+    }
+
+    @objc private func openCanopyWorld() {
+        if WorldLauncher.open(.canopy) {
             window.orderOut(nil)
         }
     }

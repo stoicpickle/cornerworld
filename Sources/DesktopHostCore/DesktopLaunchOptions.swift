@@ -4,6 +4,7 @@ import GameCore
 public enum DesktopWorld: String, Equatable, Sendable {
     case overland
     case farm
+    case canopy
 }
 
 public enum DesktopLaunchCommand: Equatable, Sendable {
@@ -11,6 +12,7 @@ public enum DesktopLaunchCommand: Equatable, Sendable {
     case help
     case version
     case captureFarmFixtures(directory: String)
+    case captureCanopyFixtures(directory: String)
     case captureMenuBarFixtures(directory: String)
 }
 
@@ -22,6 +24,7 @@ public enum DesktopLaunchError: Error, Equatable, Sendable, CustomStringConverti
     case missingPlan
     case invalidPlan(String)
     case missingFixtureDirectory
+    case missingCanopyFixtureDirectory
     case missingMenuBarFixtureDirectory
     case fixtureCaptureMustBeStandalone
     case planRequiresFarm
@@ -30,9 +33,9 @@ public enum DesktopLaunchError: Error, Equatable, Sendable, CustomStringConverti
     public var description: String {
         switch self {
         case .missingWorld:
-            "--world requires overland or farm"
+            "--world requires overland, farm, or canopy"
         case .invalidWorld(let value):
-            "--world requires overland or farm, not '\(value)'"
+            "--world requires overland, farm, or canopy, not '\(value)'"
         case .missingSeed:
             "--seed requires a decimal or 0x-prefixed hexadecimal value"
         case .invalidSeed(let value):
@@ -43,6 +46,8 @@ public enum DesktopLaunchError: Error, Equatable, Sendable, CustomStringConverti
             "--plan requires wheat, beans, or fallow, not '\(value)'"
         case .missingFixtureDirectory:
             "--capture-farm-fixtures requires an output directory"
+        case .missingCanopyFixtureDirectory:
+            "--capture-canopy-fixtures requires an output directory"
         case .missingMenuBarFixtureDirectory:
             "--capture-menu-bar-fixtures requires an output directory"
         case .fixtureCaptureMustBeStandalone:
@@ -115,6 +120,18 @@ public struct DesktopLaunchOptions: Equatable, Sendable {
                     throw DesktopLaunchError.missingFixtureDirectory
                 }
                 command = .captureFarmFixtures(directory: arguments[index])
+                suppliedFixtureCapture = true
+            case "--capture-canopy-fixtures":
+                guard !suppliedFixtureCapture else {
+                    throw DesktopLaunchError.fixtureCaptureMustBeStandalone
+                }
+                index += 1
+                guard index < arguments.count,
+                      !arguments[index].isEmpty,
+                      !arguments[index].hasPrefix("--") else {
+                    throw DesktopLaunchError.missingCanopyFixtureDirectory
+                }
+                command = .captureCanopyFixtures(directory: arguments[index])
                 suppliedFixtureCapture = true
             case "--capture-menu-bar-fixtures":
                 guard !suppliedFixtureCapture else {

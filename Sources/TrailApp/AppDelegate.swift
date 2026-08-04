@@ -142,6 +142,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let openFarm = NSMenuItem(title: "Open Farm…", action: #selector(openFarmWorld), keyEquivalent: "")
         openFarm.target = self
         worldsMenu.addItem(openFarm)
+        let openCanopy = NSMenuItem(title: "Open Canopy…", action: #selector(openCanopyWorld), keyEquivalent: "")
+        openCanopy.target = self
+        worldsMenu.addItem(openCanopy)
         worlds.submenu = worldsMenu
         menu.addItem(worlds)
 
@@ -227,6 +230,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     @objc private func openFarmWorld() {
         if WorldLauncher.open(.farm) {
+            hideWindow()
+        }
+    }
+
+    @objc private func openCanopyWorld() {
+        if WorldLauncher.open(.canopy) {
             hideWindow()
         }
     }

@@ -9,18 +9,21 @@ func printDesktopHelp() {
     Cornerworld — run a tiny living world on your macOS desktop.
 
     Usage:
-      cornerworld [--world overland|farm] [--seed NUMBER] [--plan wheat|beans|fallow] [--fast]
+      cornerworld [--world overland|farm|canopy] [--seed NUMBER] [--plan wheat|beans|fallow] [--fast]
       cornerworld --capture-farm-fixtures DIRECTORY
+      cornerworld --capture-canopy-fixtures DIRECTORY
       cornerworld --capture-menu-bar-fixtures DIRECTORY
       cornerworld --version
 
     Options:
-      --world WORLD   Open Overland or Farm (default: overland).
+      --world WORLD   Open Overland, Farm, or Canopy (default: overland).
       --seed NUMBER   Reproduce a deterministic world (decimal or 0x-prefixed hex).
       --plan PLAN     Start Farm with wheat, beans, or fallow (Farm only; default: wheat).
       --fast          Advance time rapidly for development.
       --capture-farm-fixtures DIRECTORY
                       Write deterministic 320x200 Farm PNGs without launching a window.
+      --capture-canopy-fixtures DIRECTORY
+                      Write deterministic 320x200 Canopy PNGs without launching a window.
       --capture-menu-bar-fixtures DIRECTORY
                       Write isolated light/dark status-item PNGs without capturing the desktop.
       --help, -h      Print this help text without launching the app.
@@ -62,6 +65,22 @@ case .captureFarmFixtures(let directory):
         fputs("cornerworld: could not capture Farm fixtures: \(error.localizedDescription)\n", stderr)
         exit(1)
     }
+case .captureCanopyFixtures(let directory):
+    let canopyFixtureDirectory = URL(
+        fileURLWithPath: directory,
+        relativeTo: URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
+    ).standardizedFileURL
+    _ = NSApplication.shared
+    do {
+        let fixtureURLs = try CanopyFixtureCapture.writeFixtures(to: canopyFixtureDirectory)
+        for url in fixtureURLs {
+            print(url.path)
+        }
+        exit(EXIT_SUCCESS)
+    } catch {
+        fputs("cornerworld: could not capture Canopy fixtures: \(error.localizedDescription)\n", stderr)
+        exit(1)
+    }
 case .captureMenuBarFixtures(let directory):
     let menuBarFixtureDirectory = URL(
         fileURLWithPath: directory,
@@ -92,6 +111,8 @@ case .farm:
         plan: launchOptions.farmPlan,
         fast: launchOptions.fast
     )
+case .canopy:
+    CanopyAppDelegate(seed: launchOptions.seed, fast: launchOptions.fast)
 }
 app.delegate = retainedDelegate
 app.setActivationPolicy(.accessory)

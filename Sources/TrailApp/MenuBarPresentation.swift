@@ -134,9 +134,48 @@ enum MenuBarPresentation {
         return title
     }
 
+    static func canopyIcon(accent: NSColor) -> NSImage {
+        let image = NSImage(size: NSSize(width: 23, height: 16))
+        image.lockFocus()
+        let color = NSColor.controlTextColor
+        let stem = NSBezierPath()
+        stem.move(to: NSPoint(x: 4, y: 1.5))
+        stem.curve(
+            to: NSPoint(x: 11, y: 14.5),
+            controlPoint1: NSPoint(x: 3, y: 7),
+            controlPoint2: NSPoint(x: 13, y: 8)
+        )
+        stem.curve(
+            to: NSPoint(x: 18.5, y: 3),
+            controlPoint1: NSPoint(x: 9, y: 10),
+            controlPoint2: NSPoint(x: 18, y: 9)
+        )
+        color.setStroke()
+        stem.lineWidth = 1.5
+        stem.lineCapStyle = .round
+        stem.stroke()
+        accent.setFill()
+        NSBezierPath(ovalIn: NSRect(x: 2, y: 5, width: 6, height: 3.5)).fill()
+        NSBezierPath(ovalIn: NSRect(x: 9, y: 10.5, width: 6, height: 3.5)).fill()
+        NSBezierPath(ovalIn: NSRect(x: 15, y: 3.5, width: 6, height: 3.5)).fill()
+        image.unlockFocus()
+        image.isTemplate = false
+        return image
+    }
+
     static func farmTitle(week: Int, cash: Int) -> NSAttributedString {
         NSAttributedString(
             string: " W\(week) · $\(cash)",
+            attributes: [
+                .foregroundColor: NSColor.labelColor,
+                .font: NSFont.monospacedDigitSystemFont(ofSize: 12.5, weight: .medium),
+            ]
+        )
+    }
+
+    static func canopyTitle(vines: Int, density: Int) -> NSAttributedString {
+        NSAttributedString(
+            string: " \(vines) vines · \(density)%",
             attributes: [
                 .foregroundColor: NSColor.labelColor,
                 .font: NSFont.monospacedDigitSystemFont(ofSize: 12.5, weight: .medium),

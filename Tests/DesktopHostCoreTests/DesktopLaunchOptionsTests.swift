@@ -33,6 +33,16 @@ final class DesktopLaunchOptionsTests: XCTestCase {
         XCTAssertEqual(options.farmPlan.rawValue, "fallow")
     }
 
+    func testCanopyWorldParsesWithASeedAndFastClock() throws {
+        let options = try DesktopLaunchOptions(arguments: [
+            "--world", "CANOPY", "--seed", "1993", "--fast",
+        ])
+
+        XCTAssertEqual(options.world, .canopy)
+        XCTAssertEqual(options.seed, 1_993)
+        XCTAssertTrue(options.fast)
+    }
+
     func testHelpAndVersionCommandsDoNotLaunchAWorld() throws {
         XCTAssertEqual(
             try DesktopLaunchOptions(arguments: ["--help", "--unknown"]).command,
@@ -60,6 +70,16 @@ final class DesktopLaunchOptionsTests: XCTestCase {
         XCTAssertEqual(
             options.command,
             .captureMenuBarFixtures(directory: ".build/menu-proof")
+        )
+    }
+
+    func testCanopyFixtureCaptureParsesItsDirectory() throws {
+        let options = try DesktopLaunchOptions(arguments: [
+            "--capture-canopy-fixtures", ".build/canopy-proof",
+        ])
+        XCTAssertEqual(
+            options.command,
+            .captureCanopyFixtures(directory: ".build/canopy-proof")
         )
     }
 
@@ -95,6 +115,10 @@ final class DesktopLaunchOptionsTests: XCTestCase {
         assertError(["--plan"], equals: .missingPlan)
         assertError(["--capture-farm-fixtures"], equals: .missingFixtureDirectory)
         assertError(
+            ["--capture-canopy-fixtures"],
+            equals: .missingCanopyFixtureDirectory
+        )
+        assertError(
             ["--capture-farm-fixtures", "--fast"],
             equals: .missingFixtureDirectory
         )
@@ -124,7 +148,7 @@ final class DesktopLaunchOptionsTests: XCTestCase {
     func testInvalidValueDescriptionsNameTheRejectedInput() {
         XCTAssertEqual(
             DesktopLaunchError.invalidWorld("lighthouse").description,
-            "--world requires overland or farm, not 'lighthouse'"
+            "--world requires overland, farm, or canopy, not 'lighthouse'"
         )
         XCTAssertEqual(
             DesktopLaunchError.invalidSeed("bad-seed").description,
