@@ -196,7 +196,7 @@ final class CanopyScene: SKScene {
         case .clean(let direction): direction
         case .wallImpact(let side): side
         }
-        let node = swingSprite()
+        let node = swingSprite(for: outcome)
         node.zPosition = 30
         addChild(node)
 
@@ -218,8 +218,8 @@ final class CanopyScene: SKScene {
             case .clean:
                 node.position = CGPoint(x: 160, y: 125)
             case .wallImpact(let side):
-                node.position = CGPoint(x: side == .right ? 286 : 34, y: 121)
-                node.zRotation = side == .right ? -.pi / 6 : .pi / 6
+                node.position = CGPoint(x: side == .right ? 280 : 40, y: 121)
+                node.zRotation = side == .right ? -.pi / 9 : .pi / 9
             }
             return
         }
@@ -238,7 +238,7 @@ final class CanopyScene: SKScene {
         case .wallImpact(let side):
             let firstArcX: CGFloat = side == .right ? 98 : 222
             let lastArcX: CGFloat = side == .right ? 190 : 130
-            let wallX: CGFloat = side == .right ? 286 : 34
+            let wallX: CGFloat = side == .right ? 280 : 40
             points = [
                 CGPoint(x: startX, y: 116), CGPoint(x: firstArcX, y: 142),
                 CGPoint(x: lastArcX, y: 151), CGPoint(x: wallX, y: 121),
@@ -250,30 +250,64 @@ final class CanopyScene: SKScene {
             actions.append(.move(to: point, duration: 0.18))
         }
         if case .wallImpact(let side) = outcome {
-            actions.append(.rotate(toAngle: side == .right ? -.pi / 6 : .pi / 6, duration: 0.08))
+            actions.append(.rotate(toAngle: side == .right ? -.pi / 9 : .pi / 9, duration: 0.08))
             actions.append(.wait(forDuration: 0.18))
             actions.append(.moveBy(x: 0, y: -52, duration: 0.75))
         }
         node.run(.sequence(actions))
     }
 
-    private func swingSprite() -> SKNode {
+    private func swingSprite(for outcome: CanopySwingOutcome) -> SKNode {
         let node = SKNode()
         for step in 0..<12 {
             let rope = SKSpriteNode(color: color(0.50, 0.29, 0.08), size: CGSize(width: 2, height: 4))
             rope.anchorPoint = .zero
-            rope.position = CGPoint(x: CGFloat(step / 4), y: CGFloat(17 + step * 4))
+            rope.position = CGPoint(x: CGFloat(step / 4), y: CGFloat(29 + step * 4))
             node.addChild(rope)
         }
+
+        let direction: CanopySide
+        let rows: [String]
+        switch outcome {
+        case .clean(let swingDirection):
+            direction = swingDirection
+            rows = [
+                "..S.HHH..",
+                "..S.HSH..",
+                "..SSSS...",
+                "...TTT...",
+                ".S.TTTS..",
+                "...TT....",
+                "..L..L...",
+                ".LL...L..",
+                "LL....LL.",
+            ]
+        case .wallImpact(let side):
+            direction = side
+            rows = [
+                "..S.HHH..",
+                "..S.HSH..",
+                "..SSSS.S.",
+                "...TTTSS.",
+                "...TTT...",
+                "..LTT....",
+                ".LL..L...",
+                "L...LL...",
+                "....L....",
+            ]
+        }
         let person = pixelNode(
-            rows: [".OO.", ".OO.", "KKKK", ".WW.", "W..W", ".BB.", "B..B"],
+            rows: rows,
             palette: [
-                "O": color(0.96, 0.54, 0.18), "K": color(0.10, 0.06, 0.04),
-                "W": color(0.92, 0.86, 0.65), "B": color(0.40, 0.18, 0.05),
+                "H": color(0.12, 0.055, 0.025),
+                "S": color(0.94, 0.48, 0.16),
+                "T": color(0.94, 0.68, 0.12),
+                "L": color(0.29, 0.11, 0.035),
             ],
-            scale: 2
+            scale: 3
         )
-        person.position = CGPoint(x: -5, y: 2)
+        person.position = CGPoint(x: direction == .right ? -6 : 21, y: 2)
+        person.xScale = direction == .right ? 1 : -1
         node.addChild(person)
         return node
     }

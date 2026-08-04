@@ -11,7 +11,9 @@ Cornerworld follows [Semantic Versioning](https://semver.org/).
 - Original procedural pixel art and locally synthesized optional swing audio,
   with a comic wall-impact and slide variation.
 - Canopy clock controls, menu-bar status, recent-event journal, seeded launch,
-  cross-world launching, and nine privacy-safe 320x200 visual fixtures.
+  cross-world launching, and eleven privacy-safe 320x200 visual fixtures.
+- A larger original Canopy Wanderer with readable hair, face, raised gripping
+  arm, tunic, moving legs, mirrored travel, and a distinct wall-impact pose.
 - A deterministic 52-week Farm simulation with seasonal weather, wheat, beans,
   fallow, explainable harvests, winter pressure, and a terminal runner.
 - A fixed 320x200 Farm scene whose field, buildings, weather, crop growth, and

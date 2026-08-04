@@ -35,9 +35,9 @@ Sources used to identify the remembered program:
 - Gentle, active, wild, and paused clock modes control the ambient pace.
 - Sound is off by default and can be enabled from the Canopy menu.
 
-The simulation is deterministic for a displayed seed. Fixture capture covers
-young, established, overgrown, weather, bloom, bird, swing, impact, and pruned
-states without recording the user's desktop.
+The simulation is deterministic for a displayed seed. Eleven fixtures cover
+young, established, overgrown, weather, bloom, bird, mirrored swing and impact
+poses, and pruning without recording the user's desktop.
 
 ## What Canopy teaches the host
 
