@@ -80,9 +80,9 @@ final class CanopyScene: SKScene {
 
     private func drawJungle(snapshot: CanopyPresentationSnapshot) {
         let sky = color(0.012, 0.035, 0.075)
-        let distantTrunk = color(0.025, 0.10, 0.075)
-        let distantLeaf = color(0.018, 0.14, 0.085)
-        let nearLeaf = color(0.025, 0.20, 0.10)
+        let distantTrunk = color(0.018, 0.055, 0.060)
+        let distantLeaf = color(0.014, 0.070, 0.068)
+        let nearLeaf = color(0.022, 0.095, 0.075)
         addRect(x: 0, y: Layout.worldBottom, width: 320, height: 142, color: sky, z: 0)
 
         for (x, width, height) in [(10, 8, 111), (66, 6, 78), (224, 9, 118), (307, 8, 93)] {
@@ -132,7 +132,7 @@ final class CanopyScene: SKScene {
                 "..MMMM..",
                 "...MMM..",
             ],
-            palette: ["M": color(0.96, 0.91, 0.55)],
+            palette: ["M": color(0.84, 0.81, 0.50)],
             scale: 2,
             x: 279,
             y: 174,
@@ -142,7 +142,7 @@ final class CanopyScene: SKScene {
         for index in 0..<12 {
             let x = deterministic(index, seed: snapshot.seed, modulo: 300) + 10
             let y = deterministic(index + 40, seed: snapshot.seed, modulo: 105) + 82
-            addRect(x: CGFloat(x), y: CGFloat(y), width: 1, height: 1, color: color(0.42, 0.64, 0.72), z: 2)
+            addRect(x: CGFloat(x), y: CGFloat(y), width: 1, height: 1, color: color(0.24, 0.38, 0.48), z: 2)
         }
     }
 
