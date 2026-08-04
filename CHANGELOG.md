@@ -18,6 +18,8 @@ Cornerworld follows [Semantic Versioning](https://semver.org/).
   controls, and cleanup for completed child-world processes.
 - Typed Farm event visuals for weeds, crows, deer, neighbor provisions, wind
   damage, repair days, harvest, and the year-end result.
+- A redesigned Farm clock with brisk, ambient, slow, very slow, and paused
+  modes, readable event dwell time, and energy-aware timer tolerance.
 
 ## 1.1.0 — 2026-08-03
 

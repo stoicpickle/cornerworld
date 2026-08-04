@@ -116,6 +116,23 @@ Rations trade food reserves for daily health:
 Running out of food overrides the ration setting with a larger health penalty.
 Illness and harsh weather stack with these effects.
 
+### Farm clock
+
+Farm advances one week at a time and defaults to the ambient clock. Its menu
+names the approximate real-time length of a full 52-week year:
+
+| Setting | Seconds per week | Approximate year |
+| --- | ---: | ---: |
+| Brisk | 4 | 3½ minutes |
+| Ambient | 12 | 10 minutes |
+| Slow | 30 | 26 minutes |
+| Very slow | 60 | 52 minutes |
+| Paused | — | — |
+
+In Brisk mode, a visual event remains on screen for at least seven seconds so
+it can be read before the next quiet week. The `--fast` option remains a
+development-only accelerated clock.
+
 ## Run the terminal simulation
 
 ```sh

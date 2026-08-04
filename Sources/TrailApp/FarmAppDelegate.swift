@@ -1,16 +1,11 @@
 import AppKit
+import DesktopHostCore
 import SpriteKit
 import FarmCore
 
 @MainActor
 final class FarmAppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
-    private enum TimeMode: Int {
-        case normal
-        case slow
-        case paused
-    }
-
-    private let normalTickInterval: TimeInterval
+    private let clockSchedule: FarmClockSchedule
     private var selectedPlan: FarmPlan
     private let initialSeed: UInt64
 
@@ -23,7 +18,7 @@ final class FarmAppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var tickTimer: Timer?
     private var latestEvent = "The field waits for spring planting."
     private var presentationRevision = 0
-    private var timeMode: TimeMode = .normal
+    private var timeMode: FarmClockMode = .ambient
 
     private var runTitleItem: NSMenuItem!
     private var fieldPlanMenu: NSMenu!
@@ -33,7 +28,7 @@ final class FarmAppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     init(seed: UInt64?, plan: FarmPlan, fast: Bool) {
         initialSeed = seed ?? UInt64.random(in: 0...UInt64.max)
         selectedPlan = plan
-        normalTickInterval = fast ? 0.05 : 5.75
+        clockSchedule = FarmClockSchedule(accelerated: fast)
         super.init()
     }
 
@@ -145,8 +140,12 @@ final class FarmAppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         let time = NSMenuItem(title: "Time", action: nil, keyEquivalent: "")
         timeMenu = NSMenu(title: "Time")
-        for (title, mode) in [("Normal", TimeMode.normal), ("Slow", .slow), ("Paused", .paused)] {
-            let item = NSMenuItem(title: title, action: #selector(setTimeMode(_:)), keyEquivalent: "")
+        for mode in FarmClockMode.allCases {
+            let item = NSMenuItem(
+                title: mode.menuTitle,
+                action: #selector(setTimeMode(_:)),
+                keyEquivalent: ""
+            )
             item.target = self
             item.tag = mode.rawValue
             timeMenu.addItem(item)
@@ -192,7 +191,7 @@ final class FarmAppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     @objc private func setTimeMode(_ sender: NSMenuItem) {
-        guard let mode = TimeMode(rawValue: sender.tag) else { return }
+        guard let mode = FarmClockMode(rawValue: sender.tag) else { return }
         timeMode = mode
         if mode == .paused || simulation.isFinished {
             stopTicking()
@@ -220,13 +219,26 @@ final class FarmAppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     private func startTicking() {
         stopTicking()
-        guard timeMode != .paused, !simulation.isFinished else { return }
-        let interval = timeMode == .slow ? normalTickInterval * 2 : normalTickInterval
-        tickTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in
+        scheduleNextTick()
+    }
+
+    private func scheduleNextTick() {
+        guard !simulation.isFinished,
+              let delay = clockSchedule.delay(
+                  for: timeMode,
+                  showingVisualEvent: simulation.latestVisualEvent != nil
+              ) else { return }
+
+        let timer = Timer(timeInterval: delay, repeats: false) { [weak self] _ in
             MainActor.assumeIsolated {
-                self?.tick()
+                guard let self else { return }
+                self.tick()
+                self.scheduleNextTick()
             }
         }
+        timer.tolerance = clockSchedule.tolerance(for: delay)
+        tickTimer = timer
+        RunLoop.main.add(timer, forMode: .common)
     }
 
     private func tick() {
@@ -254,7 +266,7 @@ final class FarmAppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     private func updateMenus() {
         guard runTitleItem != nil else { return }
-        runTitleItem.title = "CORNERWORLD  •  FARM  •  SEED \(seedText)"
+        runTitleItem.title = "CORNERWORLD  •  FARM  •  \(timeMode.title.uppercased())  •  SEED \(seedText)"
 
         for (index, item) in fieldPlanMenu.items.enumerated() {
             item.state = FarmPlan.allCases[index] == simulation.plan ? .on : .off
@@ -295,8 +307,8 @@ final class FarmAppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             cash: simulation.cash
         )
         button.setAccessibilityLabel("Cornerworld Farm status")
-        button.setAccessibilityValue("Week \(simulation.week) of 52; \(simulation.cash) dollars cash")
-        button.toolTip = "CORNERWORLD — FARM\n\(seasonName(simulation.season)), week \(simulation.weekOfSeason)\n\(planName(simulation.plan)) field · $\(simulation.cash) cash\nSeed \(seedText)"
+        button.setAccessibilityValue("Week \(simulation.week) of 52; \(simulation.cash) dollars cash; time \(timeMode.title)")
+        button.toolTip = "CORNERWORLD — FARM\n\(seasonName(simulation.season)), week \(simulation.weekOfSeason)\n\(planName(simulation.plan)) field · $\(simulation.cash) cash\nTime \(timeMode.menuTitle)\nSeed \(seedText)"
     }
 }
 

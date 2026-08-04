@@ -19,9 +19,10 @@ decline, and no constant clicking.
 ## First playable year
 
 The first slice uses one field and one weekly simulation tick. Thirteen weeks
-make a season and four seasons make a year. Normal play should take roughly
-five minutes per year, with a fast mode for development and deterministic
-captures.
+make a season and four seasons make a year. The default ambient clock takes
+roughly ten minutes per year, with brisk, slow, very slow, paused, and
+development-fast alternatives. Brisk mode holds visual events longer than
+quiet weeks so their art and message remain readable.
 
 At the start of spring, choose one field plan:
 
