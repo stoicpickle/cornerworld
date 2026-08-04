@@ -1,10 +1,10 @@
 # Canopy scenario
 
-Canopy is Cornerworld's third small world: a moonlit masonry wall slowly fills
-with climbing vines. Rain accelerates the green, flowers open, birds stop by,
+Canopy is Cornerworld's third small world: a moonlit jungle slowly fills with
+climbing vines. Rain accelerates the green, flowers open, birds stop by,
 and an original pixel wanderer occasionally swings across the growth. Most
 crossings are clean; every few passes end in a comic collision and slide down
-one edge of the wall.
+one edge of the world.
 
 ## Why this world exists
 
@@ -26,11 +26,11 @@ Sources used to identify the remembered program:
 
 ## First playable loop
 
-- Three vines begin at the foot of a fixed 320x200 wall and grow vertically.
+- Three vines begin at the foot of a fixed 320x200 jungle and grow vertically.
 - Seeded growth can branch into as many as nine vines.
 - Rain, blooms, and visiting birds create readable visual moments.
 - Swings occur at irregular deterministic intervals; roughly every fourth
-  swing ends at a side wall and slides downward.
+  swing ends at a screen edge and slides downward.
 - Pruning cuts the oldest growth back without resetting the world.
 - Gentle, active, wild, and paused clock modes control the ambient pace.
 - Sound is off by default and can be enabled from the Canopy menu.

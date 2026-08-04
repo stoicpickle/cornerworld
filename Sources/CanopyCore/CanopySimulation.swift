@@ -135,7 +135,7 @@ public struct CanopySimulation: Equatable, Sendable {
         )
         nextVineID += 1
         state.vines.append(vine)
-        messages.append("A new vine finds the wall and begins to climb.")
+        messages.append("A new vine catches a trunk and begins to climb.")
     }
 
     private mutating func bloomIfNeeded(messages: inout [String]) {
@@ -156,7 +156,7 @@ public struct CanopySimulation: Equatable, Sendable {
         let outcome: CanopySwingOutcome
         if collision {
             outcome = .wallImpact(side: direction)
-            messages.append("The canopy wanderer meets the (direction.rawValue) wall and slides down.")
+            messages.append("The canopy wanderer clips the (direction.rawValue) edge and slides down.")
         } else {
             outcome = .clean(direction: direction)
             messages.append("A wild whoop crosses the canopy as the wanderer swings past.")
@@ -172,6 +172,6 @@ public struct CanopySimulation: Equatable, Sendable {
             )
         }
         state.latestVisualEvent = .rain
-        messages.append("Warm rain sends fresh green growth up the wall.")
+        messages.append("Warm rain sends fresh green growth toward the canopy.")
     }
 }

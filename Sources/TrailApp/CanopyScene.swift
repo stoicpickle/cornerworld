@@ -72,24 +72,53 @@ final class CanopyScene: SKScene {
         removeAllChildren()
         backgroundColor = .black
 
-        drawWall(snapshot: snapshot)
+        drawJungle(snapshot: snapshot)
         drawVines(snapshot.vines)
         drawEvent(snapshot.visualEvent, snapshot: snapshot)
         drawPanel(snapshot)
     }
 
-    private func drawWall(snapshot: CanopyPresentationSnapshot) {
-        let wall = color(0.025, 0.055, 0.075)
-        let mortar = color(0.05, 0.10, 0.12)
-        addRect(x: 0, y: Layout.worldBottom, width: 320, height: 142, color: wall, z: 0)
+    private func drawJungle(snapshot: CanopyPresentationSnapshot) {
+        let sky = color(0.012, 0.035, 0.075)
+        let distantTrunk = color(0.025, 0.10, 0.075)
+        let distantLeaf = color(0.018, 0.14, 0.085)
+        let nearLeaf = color(0.025, 0.20, 0.10)
+        addRect(x: 0, y: Layout.worldBottom, width: 320, height: 142, color: sky, z: 0)
 
-        for row in 0..<8 {
-            let y = CGFloat(61 + row * 18)
-            addRect(x: 0, y: y, width: 320, height: 1, color: mortar, z: 1)
-            let offset = row.isMultiple(of: 2) ? 0 : 20
-            for x in stride(from: offset, through: 320, by: 40) {
-                addRect(x: CGFloat(x), y: y, width: 1, height: 18, color: mortar, z: 1)
-            }
+        for (x, width, height) in [(10, 8, 111), (66, 6, 78), (224, 9, 118), (307, 8, 93)] {
+            addRect(
+                x: CGFloat(x), y: Layout.worldBottom,
+                width: CGFloat(width), height: CGFloat(height),
+                color: distantTrunk, z: 1
+            )
+        }
+        addRect(x: 10, y: 153, width: 29, height: 5, color: distantTrunk, z: 1)
+        addRect(x: 205, y: 151, width: 28, height: 5, color: distantTrunk, z: 1)
+        addRect(x: 289, y: 128, width: 26, height: 5, color: distantTrunk, z: 1)
+
+        let canopy = ["..JJJ...", ".JJJJJ..", "JJJJJJJ.", ".JJJJJJ.", "..JJJ..."]
+        for (index, x) in [-10, 22, 58, 96, 136, 176, 216, 302].enumerated() {
+            drawPixels(
+                canopy,
+                palette: ["J": index.isMultiple(of: 2) ? distantLeaf : nearLeaf],
+                scale: 4,
+                x: CGFloat(x),
+                y: CGFloat(176 + (index % 3) * 4),
+                z: 2
+            )
+        }
+
+        addRect(x: 0, y: Layout.worldBottom, width: 320, height: 10, color: distantLeaf, z: 2)
+        for index in 0..<24 {
+            let x = index * 14 - 8
+            let height = 5 + deterministic(index + 150, seed: snapshot.seed, modulo: 13)
+            let width = 10 + deterministic(index + 180, seed: snapshot.seed, modulo: 9)
+            addRect(
+                x: CGFloat(x), y: Layout.worldBottom + 8,
+                width: CGFloat(width), height: CGFloat(height),
+                color: index.isMultiple(of: 2) ? distantLeaf : nearLeaf,
+                z: 3
+            )
         }
 
         drawPixels(
@@ -110,11 +139,10 @@ final class CanopyScene: SKScene {
             z: 2
         )
 
-        // Small points of light make the wall feel alive without becoming a sky.
-        for index in 0..<10 {
+        for index in 0..<12 {
             let x = deterministic(index, seed: snapshot.seed, modulo: 300) + 10
-            let y = deterministic(index + 40, seed: snapshot.seed, modulo: 123) + 68
-            addRect(x: CGFloat(x), y: CGFloat(y), width: 1, height: 1, color: color(0.20, 0.45, 0.40), z: 2)
+            let y = deterministic(index + 40, seed: snapshot.seed, modulo: 105) + 82
+            addRect(x: CGFloat(x), y: CGFloat(y), width: 1, height: 1, color: color(0.42, 0.64, 0.72), z: 2)
         }
     }
 
@@ -337,7 +365,7 @@ final class CanopyScene: SKScene {
     }
 
     private func fitted(_ message: String) -> String {
-        let text = message.isEmpty ? "THE WALL WAITS FOR GREEN." : message
+        let text = message.isEmpty ? "THE JUNGLE WAITS FOR GREEN." : message
         if text.count <= 54 { return text }
         return String(text.prefix(51)).trimmingCharacters(in: .whitespaces) + "..."
     }

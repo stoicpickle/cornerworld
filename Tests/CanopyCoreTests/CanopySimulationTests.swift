@@ -107,7 +107,7 @@ final class CanopySimulationTests: XCTestCase {
         case .bloom: message.contains("flower")
         case .bird: message.contains("bird")
         case .swing(.clean): message.contains("whoop")
-        case .swing(.wallImpact): message.contains("wall")
+        case .swing(.wallImpact): message.contains("edge")
         case .pruned: message.contains("pruned")
         }
     }

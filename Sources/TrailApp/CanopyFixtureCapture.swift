@@ -39,13 +39,13 @@ enum CanopyFixtureCapture {
         Fixture(filename: "canopy-young.png", tick: 4),
         Fixture(filename: "canopy-established.png", tick: 30),
         Fixture(filename: "canopy-overgrown.png", tick: 120),
-        Fixture(filename: "canopy-event-rain.png", tick: 42, event: .rain, message: "Warm rain sends fresh green growth up the wall."),
-        Fixture(filename: "canopy-event-bloom.png", tick: 48, event: .bloom(vineID: 0), message: "A night flower opens between the bricks."),
+        Fixture(filename: "canopy-event-rain.png", tick: 42, event: .rain, message: "Warm rain sends fresh growth toward the canopy."),
+        Fixture(filename: "canopy-event-bloom.png", tick: 48, event: .bloom(vineID: 0), message: "A night flower opens beneath the moon."),
         Fixture(filename: "canopy-event-bird.png", tick: 55, event: .bird, message: "A bright bird pauses among the new leaves."),
         Fixture(filename: "canopy-event-clean-swing.png", tick: 72, event: .swing(.clean(direction: .right)), message: "A wild whoop crosses the canopy."),
         Fixture(filename: "canopy-event-clean-swing-left.png", tick: 73, event: .swing(.clean(direction: .left)), message: "The wanderer arcs back across the canopy."),
-        Fixture(filename: "canopy-event-wall-impact.png", tick: 96, event: .swing(.wallImpact(side: .right)), message: "The wanderer meets the wall and slides down."),
-        Fixture(filename: "canopy-event-wall-impact-left.png", tick: 97, event: .swing(.wallImpact(side: .left)), message: "The wanderer clips the other wall this time."),
+        Fixture(filename: "canopy-event-wall-impact.png", tick: 96, event: .swing(.wallImpact(side: .right)), message: "The wanderer clips the edge and slides down."),
+        Fixture(filename: "canopy-event-wall-impact-left.png", tick: 97, event: .swing(.wallImpact(side: .left)), message: "The wanderer clips the other edge this time."),
         Fixture(filename: "canopy-event-pruned.png", tick: 120, event: .pruned, message: "The oldest growth is pruned back."),
     ]
 
@@ -54,7 +54,7 @@ enum CanopyFixtureCapture {
 
         return try fixtures.map { fixture in
             var simulation = CanopySimulation(seed: seed)
-            var latestEvent = "The wall waits for green."
+            var latestEvent = "The jungle waits for green."
             for _ in 0..<fixture.tick {
                 latestEvent = simulation.tick().last ?? latestEvent
             }

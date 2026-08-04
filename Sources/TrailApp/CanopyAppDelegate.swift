@@ -16,7 +16,7 @@ final class CanopyAppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var statusItem: NSStatusItem!
     private var appearanceObservation: NSKeyValueObservation?
     private var tickTimer: Timer?
-    private var latestEvent = "The wall waits for green."
+    private var latestEvent = "The jungle waits for green."
     private var presentationRevision = 0
     private var clockMode: CanopyClockMode = .active
     private var soundEnabled = false
@@ -190,7 +190,7 @@ final class CanopyAppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private func beginCanopy(seed: UInt64) {
         stopTicking()
         simulation = CanopySimulation(seed: seed)
-        latestEvent = "The wall waits for green."
+        latestEvent = "The jungle waits for green."
         presentationRevision += 1
         scene = CanopyScene(snapshot: presentationSnapshot())
         skView.presentScene(scene)
