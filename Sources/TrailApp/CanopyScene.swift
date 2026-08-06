@@ -1,3 +1,4 @@
+import AppKit
 import CanopyCore
 import SpriteKit
 
@@ -131,6 +132,7 @@ final class CanopyScene: SKScene {
         let distantLeaf = color(0.035, 0.075, 0.070)
         let nearLeaf = color(0.050, 0.105, 0.080)
         addRect(x: 0, y: Layout.worldBottom, width: 320, height: 142, color: sky, z: 0)
+        drawGeneratedJungleBackdrop()
 
         for (x, width, height) in [(10, 8, 111), (66, 6, 78), (224, 9, 118), (307, 8, 93)] {
             addRect(
@@ -186,6 +188,30 @@ final class CanopyScene: SKScene {
             z: 2
         )
 
+    }
+
+    private func drawGeneratedJungleBackdrop() {
+        guard
+            let url = Bundle.module.url(
+                forResource: "canopy-lofi-background",
+                withExtension: "png"
+            ),
+            let image = NSImage(contentsOf: url)
+        else { return }
+
+        let texture = SKTexture(image: image)
+        texture.filteringMode = .nearest
+        let backdrop = SKSpriteNode(
+            texture: texture,
+            color: color(0.01, 0.05, 0.07),
+            size: CGSize(width: 320, height: 144)
+        )
+        backdrop.anchorPoint = .zero
+        backdrop.position = CGPoint(x: 0, y: Layout.worldBottom)
+        backdrop.zPosition = 0.5
+        backdrop.alpha = 0.24
+        backdrop.colorBlendFactor = 0.42
+        addChild(backdrop)
     }
 
     private func drawAtmosphere(snapshot: CanopyPresentationSnapshot) {

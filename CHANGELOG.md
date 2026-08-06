@@ -38,6 +38,8 @@ Cornerworld follows [Semantic Versioning](https://semver.org/).
 - A cohesive Canopy lofi pass with a muted nocturne palette, Gentle default,
   curved pendulum swing, persistent slow mist, drifting fireflies, and
   asynchronous star twinkling.
+- A subdued, native-width Retro Diffusion jungle backdrop blended beneath
+  Canopy's deterministic silhouettes and animated atmosphere.
 
 ## 1.1.0 — 2026-08-03
 

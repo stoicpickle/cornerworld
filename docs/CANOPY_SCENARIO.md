@@ -37,6 +37,9 @@ Sources used to identify the remembered program:
 - Sound is off by default and can be enabled from the Canopy menu.
 - A muted nocturne palette, persistent mist, sparse fireflies, and twinkling
   stars keep the live world moving gently between growth events.
+- A faint, navy-tinted Retro Diffusion jungle texture adds distant depth behind
+  the deterministic silhouettes without replacing the crescent, vines, events,
+  or animated atmosphere.
 - The wanderer follows a curved, eased pendulum path instead of stepping
   through a sequence of straight lines.
 

@@ -25,6 +25,7 @@ let package = Package(
         .executableTarget(
             name: "TrailApp",
             dependencies: ["GameCore", "FarmCore", "CanopyCore", "DesktopHostCore"],
+            resources: [.process("Resources")],
             linkerSettings: [
                 .linkedFramework("AppKit"),
                 .linkedFramework("SpriteKit"),
