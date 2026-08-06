@@ -24,3 +24,21 @@ jobs:
         run: swift test -c release
       - name: Release build
         run: swift build -c release
+      - name: Visual fixture smoke
+        run: |
+          fixture_root="$RUNNER_TEMP/cornerworld-fixtures"
+          swift run cornerworld --capture-farm-fixtures "$fixture_root/farm"
+          swift run cornerworld --capture-canopy-fixtures "$fixture_root/canopy"
+          swift run cornerworld --capture-menu-bar-fixtures "$fixture_root/menu-bar"
+
+          test "$(find "$fixture_root/farm" -type f -name '*.png' | wc -l | tr -d ' ')" -eq 14
+          test "$(find "$fixture_root/canopy" -type f -name '*.png' | wc -l | tr -d ' ')" -eq 11
+          test "$(find "$fixture_root/menu-bar" -type f -name '*.png' | wc -l | tr -d ' ')" -eq 4
+
+          for image in "$fixture_root"/farm/*.png "$fixture_root"/canopy/*.png; do
+            test "$(sips -g pixelWidth "$image" | awk '/pixelWidth/ { print $2 }')" -eq 320
+            test "$(sips -g pixelHeight "$image" | awk '/pixelHeight/ { print $2 }')" -eq 200
+          done
+          for image in "$fixture_root"/menu-bar/*.png; do
+            test "$(sips -g pixelHeight "$image" | awk '/pixelHeight/ { print $2 }')" -eq 48
+          done

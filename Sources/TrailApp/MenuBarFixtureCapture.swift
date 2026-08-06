@@ -26,10 +26,13 @@ enum MenuBarFixtureCapture {
         let appearanceName: NSAppearance.Name
         let overlandAccent: NSColor
         let farmAccent: NSColor
+        let canopyAccent: NSColor
         let miles: Int
         let alive: Int
         let week: Int
         let cash: Int
+        let vines: Int
+        let density: Int
     }
 
     private static let fixtures = [
@@ -38,40 +41,52 @@ enum MenuBarFixtureCapture {
             appearanceName: .aqua,
             overlandAccent: .systemGreen,
             farmAccent: .systemGreen,
+            canopyAccent: .systemGreen,
             miles: 912,
             alive: 5,
             week: 20,
-            cash: 28
+            cash: 28,
+            vines: 6,
+            density: 62
         ),
         Fixture(
             filename: "menu-bar-dark-normal.png",
             appearanceName: .darkAqua,
             overlandAccent: .systemGreen,
             farmAccent: .systemGreen,
+            canopyAccent: .systemGreen,
             miles: 912,
             alive: 5,
             week: 20,
-            cash: 28
+            cash: 28,
+            vines: 6,
+            density: 62
         ),
         Fixture(
             filename: "menu-bar-light-warning.png",
             appearanceName: .aqua,
             overlandAccent: .systemOrange,
             farmAccent: .systemRed,
+            canopyAccent: .systemGreen,
             miles: 1_894,
             alive: 2,
             week: 52,
-            cash: 0
+            cash: 0,
+            vines: 9,
+            density: 100
         ),
         Fixture(
             filename: "menu-bar-dark-warning.png",
             appearanceName: .darkAqua,
             overlandAccent: .systemOrange,
             farmAccent: .systemRed,
+            canopyAccent: .systemGreen,
             miles: 1_894,
             alive: 2,
             week: 52,
-            cash: 0
+            cash: 0,
+            vines: 9,
+            density: 100
         ),
     ]
 
@@ -133,6 +148,11 @@ enum MenuBarFixtureCapture {
         )
         let farmIcon = MenuBarPresentation.farmIcon(accent: fixture.farmAccent)
         let farmTitle = MenuBarPresentation.farmTitle(week: fixture.week, cash: fixture.cash)
+        let canopyIcon = MenuBarPresentation.canopyIcon(accent: fixture.canopyAccent)
+        let canopyTitle = MenuBarPresentation.canopyTitle(
+            vines: fixture.vines,
+            density: fixture.density
+        )
 
         let inset: CGFloat = 7
         let iconGap: CGFloat = 3
@@ -140,7 +160,8 @@ enum MenuBarFixtureCapture {
         let height: CGFloat = 24
         let overlandWidth = overlandIcon.size.width + iconGap + ceil(overlandTitle.size().width)
         let farmWidth = farmIcon.size.width + iconGap + ceil(farmTitle.size().width)
-        let width = inset * 2 + overlandWidth + worldGap + farmWidth
+        let canopyWidth = canopyIcon.size.width + iconGap + ceil(canopyTitle.size().width)
+        let width = inset * 2 + overlandWidth + farmWidth + canopyWidth + worldGap * 2
         let image = NSImage(size: NSSize(width: width, height: height))
 
         image.lockFocus()
@@ -151,6 +172,8 @@ enum MenuBarFixtureCapture {
         draw(icon: overlandIcon, title: overlandTitle, x: x, height: height)
         x += overlandWidth + worldGap
         draw(icon: farmIcon, title: farmTitle, x: x, height: height)
+        x += farmWidth + worldGap
+        draw(icon: canopyIcon, title: canopyTitle, x: x, height: height)
 
         image.unlockFocus()
         return image

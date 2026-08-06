@@ -13,8 +13,8 @@ Run:
 swift run cornerworld --capture-menu-bar-fixtures .build/visual-proof/menu-bar
 ```
 
-The command writes four Retina PNGs using the same icon and attributed-title
-renderer as the live status items:
+The command writes four Retina PNGs containing Overland, Farm, and Canopy using
+the same icon and attributed-title renderer as the live status items:
 
 - `menu-bar-light-normal.png`
 - `menu-bar-dark-normal.png`
@@ -27,27 +27,30 @@ AppKit rendering can still vary across operating-system versions.
 
 ## Acceptance results
 
-| Surface | State | Acceptance condition | 2026-08-03 result |
+| Surface | State | Acceptance condition | 2026-08-05 result |
 | --- | --- | --- | --- |
 | Overland | Light, healthy | Wagon, health light, mileage, separator, and `5/5` are distinct | Pass |
 | Overland | Dark, healthy | Silhouette and secondary text retain contrast | Pass |
 | Overland | Warning | Orange state light and `2/5` read as one warning without crowding | Pass |
 | Farm | Light and dark | Barn/sprout remains distinct from the wagon; `W20 · $28` fits | Pass |
 | Farm | Terminal pressure | Red accent and `W52 · $0` fit without clipping | Pass |
-| Two worlds | Representative maximum widths | `1894 mi · 2/5` and `W52 · $0` do not overlap | Pass |
+| Canopy | Light and dark | Vine icon remains distinct from wagon and barn; `6 vines · 62%` fits | Pass |
+| Canopy | Maximum growth | `9 vines · 100%` fits without clipping | Pass |
+| Three worlds | Representative maximum widths | `1894 mi · 2/5`, `W52 · $0`, and `9 vines · 100%` do not overlap | Pass |
 | Determinism | Repeat capture | A second run produces byte-identical PNGs | Pass |
 | Farm live item | Accessibility | AX description is `Cornerworld Farm status`; title updates as `Wn · $cash` | Pass |
 | Farm live menu | Structure | Show/Hide, New Farm, Worlds, Field Plan, Time, journal, and Quit are reachable | Pass |
-| Farm live menu | World/time submenus | World launch choices and Normal/Slow/Paused are exposed | Pass |
+| Farm live menu | World/time submenus | All three world choices and Brisk/Ambient/Slow/Very slow/Paused are exposed | Pass |
 | Farm live window | Show/hide | On-screen 320x200 window count transitions `1 → 0 → 1` | Pass |
-| Concurrent launch | Runtime creation | Overland and Farm each report a 320x200 window and status item; two processes run | Pass |
+| Canopy item | Accessibility attributes | AX description and value include world, vine count, growth, and sound state | Pass |
+| Concurrent launch | Runtime creation | Overland, Farm, and Canopy each create an independent 320x200 window and status item | Pass |
 | Appearance change while paused | Live system transition | Paused icon redraws immediately after macOS changes appearance | Not yet proved |
 | Assistive technology | Full navigation | VoiceOver can announce and activate every submenu and state | Not yet proved |
 
 ## Evidence boundary
 
-The light/dark PNGs prove the actual component renderer, spacing, colors, and
-representative values in controlled appearances. The live smoke proves AppKit
-creates the status item, exposes the expected menus through Accessibility, and
-shows or hides the world window. It does not yet constitute a full VoiceOver
-audit or prove a live appearance transition while Farm is paused.
+The light/dark PNGs prove the actual three-world component renderer, spacing,
+colors, and representative values in controlled appearances. The live smoke
+proves AppKit creates the status item, exposes the expected menus through
+Accessibility, and shows or hides the world window. It does not yet constitute
+a full VoiceOver audit or prove a live appearance transition while paused.
