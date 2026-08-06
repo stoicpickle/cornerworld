@@ -104,7 +104,7 @@ case .run:
 let app = NSApplication.shared
 let retainedDelegate: any NSApplicationDelegate = switch launchOptions.world {
 case .overland:
-    AppDelegate()
+    AppDelegate(fast: launchOptions.fast)
 case .farm:
     FarmAppDelegate(
         seed: launchOptions.seed,

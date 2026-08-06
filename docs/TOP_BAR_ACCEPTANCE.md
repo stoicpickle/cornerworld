@@ -32,6 +32,7 @@ AppKit rendering can still vary across operating-system versions.
 | Overland | Light, healthy | Wagon, health light, mileage, separator, and `5/5` are distinct | Pass |
 | Overland | Dark, healthy | Silhouette and secondary text retain contrast | Pass |
 | Overland | Warning | Orange state light and `2/5` read as one warning without crowding | Pass |
+| Overland live menu | Time controls | Brisk/Ambient/Slow/Very slow/Paused are exposed separately from travel Pace | Pass |
 | Farm | Light and dark | Barn/sprout remains distinct from the wagon; `W20 · $28` fits | Pass |
 | Farm | Terminal pressure | Red accent and `W52 · $0` fit without clipping | Pass |
 | Canopy | Light and dark | Vine icon remains distinct from wagon and barn; `6 vines · 62%` fits | Pass |

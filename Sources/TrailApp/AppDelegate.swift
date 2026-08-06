@@ -1,6 +1,7 @@
 import AppKit
 import SpriteKit
 import Darwin
+import DesktopHostCore
 import GameCore
 
 @MainActor
@@ -16,10 +17,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var presentationRevision = 0
     private var runTitleItem: NSMenuItem!
     private var paceMenu: NSMenu!
+    private var timeMenu: NSMenu!
     private var rationMenu: NSMenu!
     private var journalMenu: NSMenu!
+    private let clockSchedule: OverlandClockSchedule
+    private var timeMode: OverlandClockMode = .ambient
 
-    private var tickInterval: TimeInterval = 0.8  // real seconds per game day
+    init(fast: Bool) {
+        clockSchedule = OverlandClockSchedule(accelerated: fast)
+        super.init()
+    }
 
     // MARK: - Lifecycle
 
@@ -40,7 +47,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             return
         }
         simulation = Simulation(seed: seed)
-        if CommandLine.arguments.contains("--fast") { tickInterval = 0.04 }
         setupWindow()
         setupStatusItem()
         startTicking()
@@ -167,6 +173,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         pace.submenu = paceMenu
         menu.addItem(pace)
 
+        let time = NSMenuItem(title: "Time", action: nil, keyEquivalent: "")
+        timeMenu = NSMenu(title: "Time")
+        for mode in OverlandClockMode.allCases {
+            let item = NSMenuItem(title: mode.menuTitle, action: #selector(setTimeMode(_:)), keyEquivalent: "")
+            item.target = self
+            item.tag = mode.rawValue
+            timeMenu.addItem(item)
+        }
+        time.submenu = timeMenu
+        menu.addItem(time)
+
         let rations = NSMenuItem(title: "Rations", action: nil, keyEquivalent: "")
         rationMenu = NSMenu(title: "Rations")
         let rationOptions = [
@@ -219,7 +236,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         skView.presentScene(scene)
         updateMenus()
         updateStatus()
-        startTicking()
+        if timeMode != .paused { startTicking() }
     }
 
     @objc private func openOverlandWorld() {
@@ -261,16 +278,41 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         refreshPresentation()
     }
 
+    @objc private func setTimeMode(_ sender: NSMenuItem) {
+        guard let mode = OverlandClockMode(rawValue: sender.tag) else { return }
+        timeMode = mode
+        latestEvent = mode == .paused ? "Time paused." : "Time set to \(mode.title)."
+        refreshPresentation()
+        if mode == .paused {
+            stopTicking()
+        } else {
+            startTicking()
+        }
+    }
+
     // MARK: - Game loop
 
     private func startTicking() {
         stopTicking()
-        let interval = tickInterval
-        tickTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in
+        scheduleNextTick()
+    }
+
+    private func scheduleNextTick() {
+        guard !simulation.isFinished,
+              let delay = clockSchedule.delay(
+                  for: timeMode,
+                  showingVisualEvent: simulation.latestVisualEvent != nil
+              ) else { return }
+        let timer = Timer(timeInterval: delay, repeats: false) { [weak self] _ in
             MainActor.assumeIsolated {
-                self?.tick()
+                guard let self else { return }
+                self.tick()
+                self.scheduleNextTick()
             }
         }
+        timer.tolerance = clockSchedule.tolerance(for: delay)
+        tickTimer = timer
+        RunLoop.main.add(timer, forMode: .common)
     }
 
     private func tick() {
@@ -309,7 +351,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     private func updateMenus() {
         guard runTitleItem != nil else { return }
-        runTitleItem.title = "CORNERWORLD  •  OVERLAND  •  SEED \(seedText)"
+        runTitleItem.title = "CORNERWORLD  •  OVERLAND  •  \(timeMode.title.uppercased())  •  SEED \(seedText)"
 
         let paceTag = switch simulation.pace {
         case .steady: 0
@@ -318,6 +360,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         case .verySlow: 3
         }
         for item in paceMenu.items { item.state = item.tag == paceTag ? .on : .off }
+        for item in timeMenu.items { item.state = item.tag == timeMode.rawValue ? .on : .off }
 
         let rationTag = switch simulation.ration {
         case .filling: 0
@@ -365,7 +408,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             accent: accent
         )
         button.setAccessibilityLabel("Cornerworld Overland status")
-        button.setAccessibilityValue("\(miles) miles traveled; \(alive) of \(total) travelers alive")
-        button.toolTip = "CORNERWORLD — OVERLAND\n\(simulation.dateString)\n\(miles) miles traveled · \(simulation.distanceRemaining) remaining\n\(alive) of \(total) travelers alive\nSeed \(seedText)"
+        button.setAccessibilityValue("\(miles) miles traveled; \(alive) of \(total) travelers alive; time \(timeMode.title)")
+        button.toolTip = "CORNERWORLD — OVERLAND\n\(simulation.dateString)\n\(miles) miles traveled · \(simulation.distanceRemaining) remaining\n\(alive) of \(total) travelers alive\nTime: \(timeMode.menuTitle)\nSeed \(seedText)"
     }
 }

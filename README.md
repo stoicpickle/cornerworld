@@ -120,6 +120,24 @@ Pace changes the terrain's base daily mileage:
 | Slow | −2 miles |
 | Very slow | −6 miles |
 
+### Overland clock
+
+Time controls how often Overland advances one game day. It is separate from
+Pace, which only changes how many miles the party travels during that day.
+Overland defaults to Ambient so a journey unfolds over time instead of racing
+to its ending:
+
+| Setting | Real time per game day |
+| --- | ---: |
+| Brisk | 2 seconds |
+| Ambient | 8 seconds |
+| Slow | 20 seconds |
+| Very slow | 60 seconds |
+| Paused | — |
+
+Visual events remain on screen for at least eight seconds, even in Brisk mode.
+The `--fast` option remains a development-only accelerated clock.
+
 ### Rations
 
 Rations trade food reserves for daily health:
