@@ -45,6 +45,7 @@ AppKit rendering can still vary across operating-system versions.
 | Farm live window | Show/hide | On-screen 320x200 window count transitions `1 → 0 → 1` | Pass |
 | World window | Pointer drag | Borderless scene moves from `(8, 31)` to `(208, 231)` by dragging inside it | Pass |
 | Canopy item | Accessibility attributes | AX description and value include world, vine count, growth, and sound state | Pass |
+| Canopy live menu | Default clock | Header reports `CANOPY • GENTLE` and the Growth menu exposes all four modes | Pass |
 | Concurrent launch | Runtime creation | Overland, Farm, and Canopy each create an independent 320x200 window and status item | Pass |
 | Appearance change while paused | Live system transition | Paused icon redraws immediately after macOS changes appearance | Not yet proved |
 | Assistive technology | Full navigation | VoiceOver can announce and activate every submenu and state | Not yet proved |

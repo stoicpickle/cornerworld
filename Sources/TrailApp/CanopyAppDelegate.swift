@@ -18,7 +18,7 @@ final class CanopyAppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var tickTimer: Timer?
     private var latestEvent = "The jungle waits for green."
     private var presentationRevision = 0
-    private var clockMode: CanopyClockMode = .active
+    private var clockMode: CanopyClockMode = .defaultMode
     private var soundEnabled = false
 
     private var runTitleItem: NSMenuItem!

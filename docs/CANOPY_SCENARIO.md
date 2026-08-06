@@ -32,10 +32,17 @@ Sources used to identify the remembered program:
 - Swings occur at irregular deterministic intervals; roughly every fourth
   swing ends at a screen edge and slides downward.
 - Pruning cuts the oldest growth back without resetting the world.
-- Gentle, active, wild, and paused clock modes control the ambient pace.
+- Gentle, active, wild, and paused clock modes control the ambient pace;
+  Gentle is the default so the world develops without demanding attention.
 - Sound is off by default and can be enabled from the Canopy menu.
+- A muted nocturne palette, persistent mist, sparse fireflies, and twinkling
+  stars keep the live world moving gently between growth events.
+- The wanderer follows a curved, eased pendulum path instead of stepping
+  through a sequence of straight lines.
 
-The simulation is deterministic for a displayed seed. Eleven fixtures cover
+The simulation and atmosphere layout are deterministic for a displayed seed.
+Live atmosphere phases animate continuously, while fixture mode freezes their
+seeded starting composition. Eleven fixtures cover
 young, established, overgrown, weather, bloom, bird, mirrored swing and impact
 poses, and pruning without recording the user's desktop.
 

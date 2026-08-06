@@ -22,9 +22,10 @@ experiment with a second world: a deterministic year of planting, weather,
 harvest, and winter pressure rendered as a fixed seasonal homestead.
 
 It now also includes an early **Canopy** world: vines steadily climb through a
-moonlit jungle while rain, flowers, birds, and an original swinging wanderer
-interrupt the growth. Canopy is deliberately open-ended and low-intervention,
-closer to a living desktop animation than a campaign with a win state.
+muted moonlit jungle while mist, fireflies, rain, flowers, birds, and an
+original swinging wanderer interrupt the growth. Canopy defaults to a gentle
+pace and is deliberately open-ended and low-intervention, closer to a living
+desktop animation than a campaign with a win state.
 
 | Farm in summer | Farm in winter |
 | --- | --- |

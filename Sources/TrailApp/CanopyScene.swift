@@ -54,6 +54,24 @@ final class CanopyScene: SKScene {
 
     private var pendingSnapshot: CanopyPresentationSnapshot
     private let staticEventPose: Bool
+    private struct MistParticle {
+        let node: SKSpriteNode
+        let origin: CGPoint
+        let drift: CGFloat
+        let cycle: TimeInterval
+        let phase: CGFloat
+    }
+    private struct FireflyParticle {
+        let node: SKSpriteNode
+        let origin: CGPoint
+        let drift: CGVector
+        let cycle: TimeInterval
+        let phase: CGFloat
+    }
+    private var mistParticles: [MistParticle] = []
+    private var fireflyParticles: [FireflyParticle] = []
+    private var atmosphereLayer: SKNode?
+    private var atmosphereSeed: UInt64?
 
     init(snapshot: CanopyPresentationSnapshot, staticEventPose: Bool = false) {
         pendingSnapshot = snapshot
@@ -69,6 +87,24 @@ final class CanopyScene: SKScene {
         render(pendingSnapshot)
     }
 
+    override func update(_ currentTime: TimeInterval) {
+        guard !staticEventPose else { return }
+        for particle in mistParticles {
+            let angle = CGFloat(currentTime / particle.cycle) * 2 * .pi + particle.phase
+            particle.node.position.x = particle.origin.x + sin(angle) * particle.drift
+            particle.node.alpha = 0.045 + (cos(angle) + 1) * 0.008
+        }
+        for particle in fireflyParticles {
+            let angle = CGFloat(currentTime / particle.cycle) * 2 * .pi + particle.phase
+            let glow = (sin(angle) + 1) / 2
+            particle.node.position = CGPoint(
+                x: particle.origin.x + sin(angle * 0.62) * particle.drift.dx,
+                y: particle.origin.y + cos(angle * 0.47) * particle.drift.dy
+            )
+            particle.node.alpha = 0.16 + glow * 0.52
+        }
+    }
+
     func apply(_ snapshot: CanopyPresentationSnapshot) {
         pendingSnapshot = snapshot
         guard view != nil else { return }
@@ -76,21 +112,24 @@ final class CanopyScene: SKScene {
     }
 
     private func render(_ snapshot: CanopyPresentationSnapshot) {
+        // The atmosphere outlives gameplay redraws so its long, quiet phases never restart on a tick.
+        atmosphereLayer?.removeFromParent()
         removeAllActions()
         removeAllChildren()
         backgroundColor = .black
 
         drawJungle(snapshot: snapshot)
+        drawAtmosphere(snapshot: snapshot)
         drawVines(snapshot.vines)
         drawEvent(snapshot.visualEvent, snapshot: snapshot)
         drawPanel(snapshot)
     }
 
     private func drawJungle(snapshot: CanopyPresentationSnapshot) {
-        let sky = color(0.012, 0.035, 0.075)
-        let distantTrunk = color(0.018, 0.055, 0.060)
-        let distantLeaf = color(0.014, 0.070, 0.068)
-        let nearLeaf = color(0.022, 0.095, 0.075)
+        let sky = color(0.018, 0.030, 0.060)
+        let distantTrunk = color(0.030, 0.050, 0.055)
+        let distantLeaf = color(0.035, 0.075, 0.070)
+        let nearLeaf = color(0.050, 0.105, 0.080)
         addRect(x: 0, y: Layout.worldBottom, width: 320, height: 142, color: sky, z: 0)
 
         for (x, width, height) in [(10, 8, 111), (66, 6, 78), (224, 9, 118), (307, 8, 93)] {
@@ -140,12 +179,80 @@ final class CanopyScene: SKScene {
                 "..MMMM..",
                 "...MMM..",
             ],
-            palette: ["M": color(0.84, 0.81, 0.50)],
+            palette: ["M": color(0.82, 0.77, 0.56)],
             scale: 2,
             x: 279,
             y: 174,
             z: 2
         )
+
+    }
+
+    private func drawAtmosphere(snapshot: CanopyPresentationSnapshot) {
+        if atmosphereSeed == snapshot.seed, let atmosphereLayer {
+            addChild(atmosphereLayer)
+            return
+        }
+
+        mistParticles.removeAll(keepingCapacity: true)
+        fireflyParticles.removeAll(keepingCapacity: true)
+        let layer = SKNode()
+        atmosphereLayer = layer
+        atmosphereSeed = snapshot.seed
+        addChild(layer)
+
+        let mistColor = color(0.28, 0.39, 0.42)
+        for index in 0..<3 {
+            let mist = SKSpriteNode(
+                color: mistColor,
+                size: CGSize(
+                    width: CGFloat(72 + deterministic(index + 310, seed: snapshot.seed, modulo: 34)),
+                    height: CGFloat(3 + deterministic(index + 330, seed: snapshot.seed, modulo: 4))
+                )
+            )
+            mist.anchorPoint = .zero
+            mist.position = CGPoint(
+                x: CGFloat(deterministic(index + 350, seed: snapshot.seed, modulo: 270) - 18),
+                y: CGFloat(78 + deterministic(index + 370, seed: snapshot.seed, modulo: 72))
+            )
+            mist.alpha = 0.045 + CGFloat(index) * 0.012
+            mist.zPosition = 4
+            layer.addChild(mist)
+
+            let drift = CGFloat(22 + deterministic(index + 390, seed: snapshot.seed, modulo: 24))
+            mistParticles.append(MistParticle(
+                node: mist,
+                origin: mist.position,
+                drift: index.isMultiple(of: 2) ? drift : -drift,
+                cycle: TimeInterval(44 + deterministic(index + 410, seed: snapshot.seed, modulo: 30)),
+                phase: CGFloat(deterministic(index + 420, seed: snapshot.seed, modulo: 628)) / 100
+            ))
+        }
+
+        for index in 0..<6 {
+            let firefly = SKSpriteNode(
+                color: color(0.72, 0.70, 0.34),
+                size: CGSize(width: index.isMultiple(of: 3) ? 2 : 1, height: index.isMultiple(of: 3) ? 2 : 1)
+            )
+            firefly.anchorPoint = .zero
+            firefly.position = CGPoint(
+                x: CGFloat(18 + deterministic(index + 430, seed: snapshot.seed, modulo: 284)),
+                y: CGFloat(74 + deterministic(index + 450, seed: snapshot.seed, modulo: 72))
+            )
+            firefly.alpha = 0.22 + CGFloat(deterministic(index + 470, seed: snapshot.seed, modulo: 18)) / 100
+            firefly.zPosition = 7
+            layer.addChild(firefly)
+
+            let driftX = CGFloat(deterministic(index + 530, seed: snapshot.seed, modulo: 9) - 4)
+            let driftY = CGFloat(deterministic(index + 550, seed: snapshot.seed, modulo: 7) - 3)
+            fireflyParticles.append(FireflyParticle(
+                node: firefly,
+                origin: firefly.position,
+                drift: CGVector(dx: driftX, dy: driftY),
+                cycle: TimeInterval(7 + deterministic(index + 510, seed: snapshot.seed, modulo: 6)),
+                phase: CGFloat(deterministic(index + 490, seed: snapshot.seed, modulo: 628)) / 100
+            ))
+        }
 
         for index in 0..<12 {
             let x = deterministic(index, seed: snapshot.seed, modulo: 300) + 10
@@ -168,7 +275,7 @@ final class CanopyScene: SKScene {
         star.position = CGPoint(x: x, y: y)
         star.zPosition = 2
         star.alpha = 0.28 + CGFloat(deterministic(index + 80, seed: seed, modulo: 28)) / 100
-        addChild(star)
+        (atmosphereLayer ?? self).addChild(star)
 
         // Fixture captures stay byte-stable; only the live scene twinkles.
         guard !staticEventPose else { return }
@@ -185,10 +292,10 @@ final class CanopyScene: SKScene {
     }
 
     private func drawVines(_ vines: [CanopyVine]) {
-        let stem = color(0.06, 0.72, 0.19)
-        let oldStem = color(0.04, 0.47, 0.12)
-        let leaf = color(0.18, 0.95, 0.30)
-        let darkLeaf = color(0.05, 0.56, 0.16)
+        let stem = color(0.13, 0.52, 0.24)
+        let oldStem = color(0.08, 0.34, 0.17)
+        let leaf = color(0.35, 0.70, 0.38)
+        let darkLeaf = color(0.17, 0.46, 0.25)
 
         for vine in vines {
             let steps = max(1, vine.height / 4)
@@ -307,30 +414,24 @@ final class CanopyScene: SKScene {
         }
 
         node.position = CGPoint(x: startX, y: 116)
-        let points: [CGPoint]
+        let destination: CGPoint
+        let duration: TimeInterval
         switch outcome {
         case .clean:
-            let firstArcX: CGFloat = direction == .right ? 78 : 242
-            let lastArcX: CGFloat = direction == .right ? 242 : 78
-            points = [
-                CGPoint(x: startX, y: 116), CGPoint(x: firstArcX, y: 139),
-                CGPoint(x: 160, y: 153), CGPoint(x: lastArcX, y: 139),
-                CGPoint(x: endX, y: 116),
-            ]
+            destination = CGPoint(x: endX, y: 116)
+            duration = SwingTiming.arcSegment * 4
         case .wallImpact(let side):
-            let firstArcX: CGFloat = side == .right ? 98 : 222
-            let lastArcX: CGFloat = side == .right ? 190 : 130
             let wallX: CGFloat = side == .right ? 280 : 40
-            points = [
-                CGPoint(x: startX, y: 116), CGPoint(x: firstArcX, y: 142),
-                CGPoint(x: lastArcX, y: 151), CGPoint(x: wallX, y: 121),
-            ]
+            destination = CGPoint(x: wallX, y: 121)
+            duration = SwingTiming.arcSegment * 3
         }
 
-        var actions: [SKAction] = []
-        for point in points.dropFirst() {
-            actions.append(.move(to: point, duration: SwingTiming.arcSegment))
-        }
+        var actions: [SKAction] = [swingArcAction(
+            from: CGPoint(x: startX, y: 116),
+            to: destination,
+            controlY: 190,
+            duration: duration
+        )]
         if case .wallImpact(let side) = outcome {
             actions.append(.rotate(
                 toAngle: side == .right ? -.pi / 9 : .pi / 9,
@@ -340,6 +441,28 @@ final class CanopyScene: SKScene {
             actions.append(.moveBy(x: 0, y: -52, duration: SwingTiming.impactSlide))
         }
         node.run(.sequence(actions))
+    }
+
+    private func swingArcAction(
+        from start: CGPoint,
+        to end: CGPoint,
+        controlY: CGFloat,
+        duration: TimeInterval
+    ) -> SKAction {
+        let direction: CGFloat = end.x >= start.x ? 1 : -1
+        return SKAction.customAction(withDuration: duration) { node, elapsedTime in
+            let progress = min(1, max(0, elapsedTime / CGFloat(duration)))
+            // A cosine ease mimics a pendulum: lingering at the ends and moving fastest mid-swing.
+            let eased = (1 - cos(.pi * progress)) / 2
+            let inverse = 1 - eased
+            node.position = CGPoint(
+                x: start.x + (end.x - start.x) * eased,
+                y: inverse * inverse * start.y
+                    + 2 * inverse * eased * controlY
+                    + eased * eased * end.y
+            )
+            node.zRotation = -direction * sin(.pi * progress) * 0.045
+        }
     }
 
     private func swingSprite(for outcome: CanopySwingOutcome) -> SKNode {
@@ -399,9 +522,9 @@ final class CanopyScene: SKScene {
 
     private func drawPanel(_ snapshot: CanopyPresentationSnapshot) {
         addRect(x: 0, y: 0, width: 320, height: Layout.panelTop, color: .black, z: 50)
-        addRect(x: 0, y: Layout.panelTop, width: 320, height: 16, color: color(0.08, 0.12, 0.10), z: 50)
-        let green = color(0.16, 1.00, 0.38)
-        let paper = color(0.96, 0.96, 0.90)
+        addRect(x: 0, y: Layout.panelTop, width: 320, height: 16, color: color(0.07, 0.10, 0.085), z: 50)
+        let green = color(0.38, 0.72, 0.46)
+        let paper = color(0.82, 0.83, 0.76)
         addLabel("GROWTH \(snapshot.density)%  VINES \(snapshot.vines.count)  SWINGS \(snapshot.swingCount)", y: 27, color: green, size: 8.5)
         addLabel("SEED 0X\(String(snapshot.seed, radix: 16, uppercase: true))  TICK \(snapshot.tick)", y: 12, color: green, size: 8.5)
         addLabel(fitted(snapshot.message), y: 48, color: paper, size: 7.5)

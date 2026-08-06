@@ -6,6 +6,8 @@ public enum CanopyClockMode: Int, CaseIterable, Equatable, Sendable {
     case wild
     case paused
 
+    public static let defaultMode: Self = .gentle
+
     public var title: String {
         switch self {
         case .gentle: "Gentle"

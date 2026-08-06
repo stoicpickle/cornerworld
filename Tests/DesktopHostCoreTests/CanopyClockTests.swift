@@ -3,6 +3,7 @@ import XCTest
 
 final class CanopyClockTests: XCTestCase {
     func testGrowthModesHaveDistinctIntervals() {
+        XCTAssertEqual(CanopyClockMode.defaultMode, .gentle)
         XCTAssertEqual(CanopyClockMode.gentle.interval, 15)
         XCTAssertEqual(CanopyClockMode.active.interval, 8)
         XCTAssertEqual(CanopyClockMode.wild.interval, 3)
