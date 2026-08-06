@@ -40,6 +40,8 @@ Cornerworld follows [Semantic Versioning](https://semver.org/).
   asynchronous star twinkling.
 - A subdued, native-width Retro Diffusion jungle backdrop blended beneath
   Canopy's deterministic silhouettes and animated atmosphere.
+- An eight-frame Retro Diffusion-assisted impact and fall animation for the
+  Canopy Wanderer, mirrored across both screen edges.
 
 ## 1.1.0 — 2026-08-03
 

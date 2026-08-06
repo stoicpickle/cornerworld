@@ -73,6 +73,7 @@ final class CanopyScene: SKScene {
     private var fireflyParticles: [FireflyParticle] = []
     private var atmosphereLayer: SKNode?
     private var atmosphereSeed: UInt64?
+    private lazy var fallAnimationTextures: [SKTexture] = loadFallTextures()
 
     init(snapshot: CanopyPresentationSnapshot, staticEventPose: Bool = false) {
         pendingSnapshot = snapshot
@@ -464,9 +465,64 @@ final class CanopyScene: SKScene {
                 duration: SwingTiming.impactTurn
             ))
             actions.append(.wait(forDuration: SwingTiming.impactPause))
+            let fallFrames = fallAnimationTextures
+            if let fall = makeFallSprite(for: side) {
+                fall.isHidden = true
+                node.addChild(fall)
+                actions.append(.run { [weak node, weak fall] in
+                    guard let node, let fall else { return }
+                    for child in node.children where child !== fall {
+                        child.isHidden = true
+                    }
+                    node.zRotation = 0
+                    fall.isHidden = false
+                    fall.run(.animate(
+                        with: fallFrames,
+                        timePerFrame: SwingTiming.impactSlide / TimeInterval(fallFrames.count),
+                        resize: false,
+                        restore: false
+                    ))
+                })
+            }
             actions.append(.moveBy(x: 0, y: -52, duration: SwingTiming.impactSlide))
         }
         node.run(.sequence(actions))
+    }
+
+    private func makeFallSprite(for side: CanopySide) -> SKSpriteNode? {
+        guard let first = fallAnimationTextures.first else { return nil }
+        let sprite = SKSpriteNode(texture: first, size: CGSize(width: 64, height: 64))
+        sprite.position = CGPoint(x: 0, y: 29)
+        sprite.xScale = side == .right ? 1 : -1
+        return sprite
+    }
+
+    private func loadFallTextures() -> [SKTexture] {
+        guard
+            let url = Bundle.module.url(
+                forResource: "canopy-wanderer-fall-sheet",
+                withExtension: "png"
+            ),
+            let image = NSImage(contentsOf: url)
+        else { return [] }
+
+        let sheet = SKTexture(image: image)
+        sheet.filteringMode = .nearest
+        return (0..<8).map { index in
+            let column = index % 4
+            let rowFromTop = index / 4
+            let texture = SKTexture(
+                rect: CGRect(
+                    x: CGFloat(column) / 4,
+                    y: rowFromTop == 0 ? 0.5 : 0,
+                    width: 0.25,
+                    height: 0.5
+                ),
+                in: sheet
+            )
+            texture.filteringMode = .nearest
+            return texture
+        }
     }
 
     private func swingArcAction(

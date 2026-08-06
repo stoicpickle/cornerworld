@@ -42,6 +42,8 @@ Sources used to identify the remembered program:
   or animated atmosphere.
 - The wanderer follows a curved, eased pendulum path instead of stepping
   through a sequence of straight lines.
+- Wall impacts transition into an eight-frame Retro Diffusion-assisted squash,
+  recoil, and tumble before the Wanderer finishes sliding down the edge.
 
 The simulation and atmosphere layout are deterministic for a displayed seed.
 Live atmosphere phases animate continuously, while fixture mode freezes their
