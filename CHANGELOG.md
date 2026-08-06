@@ -42,6 +42,8 @@ Cornerworld follows [Semantic Versioning](https://semver.org/).
   Canopy's deterministic silhouettes and animated atmosphere.
 - An eight-frame Retro Diffusion-assisted impact and fall animation for the
   Canopy Wanderer, mirrored across both screen edges.
+- A transparent, palette-subdued Canopy midground with a more natural tree line,
+  fern clumps, and layered bushes in place of the old rectangular hedge blocks.
 
 ## 1.1.0 — 2026-08-03
 

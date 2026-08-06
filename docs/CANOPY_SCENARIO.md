@@ -40,6 +40,8 @@ Sources used to identify the remembered program:
 - A faint, navy-tinted Retro Diffusion jungle texture adds distant depth behind
   the deterministic silhouettes without replacing the crescent, vines, events,
   or animated atmosphere.
+- A transparent Retro Diffusion midground replaces the old rectangular hedge
+  blocks with an uneven tree line, fern clumps, palms, and layered bushes.
 - The wanderer follows a curved, eased pendulum path instead of stepping
   through a sequence of straight lines.
 - Wall impacts transition into an eight-frame Retro Diffusion-assisted squash,

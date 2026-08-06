@@ -120,14 +120,14 @@ final class CanopyScene: SKScene {
         removeAllChildren()
         backgroundColor = .black
 
-        drawJungle(snapshot: snapshot)
+        drawJungle()
         drawAtmosphere(snapshot: snapshot)
         drawVines(snapshot.vines)
         drawEvent(snapshot.visualEvent, snapshot: snapshot)
         drawPanel(snapshot)
     }
 
-    private func drawJungle(snapshot: CanopyPresentationSnapshot) {
+    private func drawJungle() {
         let sky = color(0.018, 0.030, 0.060)
         let distantTrunk = color(0.030, 0.050, 0.055)
         let distantLeaf = color(0.035, 0.075, 0.070)
@@ -158,18 +158,7 @@ final class CanopyScene: SKScene {
             )
         }
 
-        addRect(x: 0, y: Layout.worldBottom, width: 320, height: 10, color: distantLeaf, z: 2)
-        for index in 0..<24 {
-            let x = index * 14 - 8
-            let height = 5 + deterministic(index + 150, seed: snapshot.seed, modulo: 13)
-            let width = 10 + deterministic(index + 180, seed: snapshot.seed, modulo: 9)
-            addRect(
-                x: CGFloat(x), y: Layout.worldBottom + 8,
-                width: CGFloat(width), height: CGFloat(height),
-                color: index.isMultiple(of: 2) ? distantLeaf : nearLeaf,
-                z: 3
-            )
-        }
+        drawGeneratedJungleMidground()
 
         drawPixels(
             [
@@ -213,6 +202,30 @@ final class CanopyScene: SKScene {
         backdrop.alpha = 0.24
         backdrop.colorBlendFactor = 0.42
         addChild(backdrop)
+    }
+
+    private func drawGeneratedJungleMidground() {
+        guard
+            let url = Bundle.module.url(
+                forResource: "canopy-jungle-midground",
+                withExtension: "png"
+            ),
+            let image = NSImage(contentsOf: url)
+        else { return }
+
+        let texture = SKTexture(image: image)
+        texture.filteringMode = .nearest
+        let midground = SKSpriteNode(
+            texture: texture,
+            color: color(0.015, 0.13, 0.12),
+            size: CGSize(width: 320, height: 96)
+        )
+        midground.anchorPoint = .zero
+        midground.position = CGPoint(x: 0, y: Layout.worldBottom)
+        midground.zPosition = 3
+        midground.alpha = 0.62
+        midground.colorBlendFactor = 0.82
+        addChild(midground)
     }
 
     private func drawAtmosphere(snapshot: CanopyPresentationSnapshot) {
