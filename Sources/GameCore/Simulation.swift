@@ -39,6 +39,7 @@ public final class Simulation {
     private var crossedLandmarks: Set<String> = []
     private var weatherFrontDaysRemaining = 0
     private var latestDeathCause: String?
+    private var randomEventCooldownDays = 0
 
     public enum Outcome: Equatable {
         case reachedOregon
@@ -91,6 +92,7 @@ public final class Simulation {
     }
 
     var weatherFrontDaysRemainingForTesting: Int { weatherFrontDaysRemaining }
+    var randomEventCooldownDaysForTesting: Int { randomEventCooldownDays }
 
     // MARK: - Tick
 
@@ -117,7 +119,7 @@ public final class Simulation {
         applyHealthDecay(&log, fullyFed: fullyFed)
         checkLandmarksCrossed(from: previousMiles, through: travelEndMiles, log: &log)
         checkEndConditions(&log)
-        if !isFinished {
+        if !isFinished, log.isEmpty {
             rollEvent(&log)
         }
 
@@ -291,6 +293,12 @@ public final class Simulation {
 
     private func rollEvent(_ log: inout [String]) {
         guard party.aliveCount > 0 else { return }
+        if randomEventCooldownDays > 0 {
+            randomEventCooldownDays -= 1
+            return
+        }
+
+        let previousLogCount = log.count
         let roll = rng.double(in: 0...1)
 
         switch Self.dailyEventKind(for: roll) {
@@ -305,6 +313,10 @@ public final class Simulation {
         case .weatherTurnsBad: weatherTurnsBad(log: &log)
         case .passiveVignette: appendPassiveVignetteIfNoEvent(to: &log)
         case .quiet: break
+        }
+
+        if log.count > previousLogCount {
+            randomEventCooldownDays = rng.int(in: 3...6)
         }
     }
 
@@ -322,25 +334,25 @@ public final class Simulation {
         }
     }
 
-    /// Routes one daily roll without consuming more randomness. Existing mechanical
-    /// events retain their approximate relative weights but now occupy 45% of days;
-    /// passive trail color occupies 18%, leaving 37% genuinely quiet.
+    /// Routes one eligible-day roll without consuming more randomness. Mechanical
+    /// encounters retain their relative variety but occupy 25% of eligible days;
+    /// ambient trail color occupies 8%, leaving 67% quiet before cooldown is applied.
     static func dailyEventKind(for roll: Double) -> DailyEventKind {
         precondition((0...1).contains(roll))
         return switch roll {
-        case ..<0.080: .illness(.dysentery)
-        case ..<0.120: .illness(.cholera)
-        case ..<0.160: .illness(.typhoid)
-        case ..<0.200: .illness(.measles)
-        case ..<0.240: .hunt
-        case ..<0.280: .trailOpportunity
-        case ..<0.310: .oxenWolves
-        case ..<0.340: .wagonBreakdown
-        case ..<0.370: .snakeBite
-        case ..<0.400: .findSpring
-        case ..<0.430: .regionalTrade
-        case ..<0.450: .weatherTurnsBad
-        case ..<0.630: .passiveVignette
+        case ..<0.044: .illness(.dysentery)
+        case ..<0.066: .illness(.cholera)
+        case ..<0.088: .illness(.typhoid)
+        case ..<0.110: .illness(.measles)
+        case ..<0.132: .hunt
+        case ..<0.154: .trailOpportunity
+        case ..<0.171: .oxenWolves
+        case ..<0.188: .wagonBreakdown
+        case ..<0.205: .snakeBite
+        case ..<0.222: .findSpring
+        case ..<0.239: .regionalTrade
+        case ..<0.250: .weatherTurnsBad
+        case ..<0.330: .passiveVignette
         default: .quiet
         }
     }

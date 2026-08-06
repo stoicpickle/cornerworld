@@ -132,14 +132,18 @@ to its ending:
 
 | Setting | Real time per game day |
 | --- | ---: |
-| Brisk | 2 seconds |
-| Ambient | 8 seconds |
-| Slow | 20 seconds |
-| Very slow | 60 seconds |
+| Brisk | 4 seconds |
+| Ambient | 12 seconds |
+| Slow | 30 seconds |
+| Very slow | 90 seconds |
 | Paused | — |
 
-Visual events remain on screen for at least eight seconds, even in Brisk mode.
-The `--fast` option remains a development-only accelerated clock.
+Visual events remain on screen for at least ten seconds, even in Brisk mode.
+Random encounters occur on roughly one third of eligible days and are followed
+by a randomized three-to-six-day quiet stretch. Landmarks and other journey
+consequences can still occur naturally during that interval, but a landmark
+will not be overwritten by a second random event on the same day. The `--fast`
+option remains a development-only accelerated clock.
 
 ### Rations
 

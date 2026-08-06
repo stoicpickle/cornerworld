@@ -384,20 +384,20 @@ final class SimulationTests: XCTestCase {
     func testDailyEventRoutingHasIntendedWeightsAndBoundaries() {
         let cases: [(Double, Simulation.DailyEventKind)] = [
             (0.000, .illness(.dysentery)),
-            (0.080, .illness(.cholera)),
-            (0.120, .illness(.typhoid)),
-            (0.160, .illness(.measles)),
-            (0.200, .hunt),
-            (0.240, .trailOpportunity),
-            (0.280, .oxenWolves),
-            (0.310, .wagonBreakdown),
-            (0.340, .snakeBite),
-            (0.370, .findSpring),
-            (0.400, .regionalTrade),
-            (0.430, .weatherTurnsBad),
-            (0.450, .passiveVignette),
-            (0.629, .passiveVignette),
-            (0.630, .quiet),
+            (0.044, .illness(.cholera)),
+            (0.066, .illness(.typhoid)),
+            (0.088, .illness(.measles)),
+            (0.110, .hunt),
+            (0.132, .trailOpportunity),
+            (0.154, .oxenWolves),
+            (0.171, .wagonBreakdown),
+            (0.188, .snakeBite),
+            (0.205, .findSpring),
+            (0.222, .regionalTrade),
+            (0.239, .weatherTurnsBad),
+            (0.250, .passiveVignette),
+            (0.329, .passiveVignette),
+            (0.330, .quiet),
             (1.000, .quiet),
         ]
 
@@ -405,10 +405,49 @@ final class SimulationTests: XCTestCase {
             XCTAssertEqual(Simulation.dailyEventKind(for: roll), expected, "roll: \(roll)")
         }
 
-        // The routing table reserves 45% mechanical, 18% passive, 37% quiet.
-        XCTAssertEqual(0.450 - 0.000, 0.45, accuracy: 0.000_001)
-        XCTAssertEqual(0.630 - 0.450, 0.18, accuracy: 0.000_001)
-        XCTAssertEqual(1.000 - 0.630, 0.37, accuracy: 0.000_001)
+        // Cooldown is applied separately after the 25% mechanical, 8% passive roll.
+        XCTAssertEqual(0.250 - 0.000, 0.25, accuracy: 0.000_001)
+        XCTAssertEqual(0.330 - 0.250, 0.08, accuracy: 0.000_001)
+        XCTAssertEqual(1.000 - 0.330, 0.67, accuracy: 0.000_001)
+    }
+
+    func testRandomEventsLeaveAtLeastThreeQuietDays() {
+        var verifiedCooldowns = 0
+
+        for seed in UInt64(0)..<200 {
+            let sim = Simulation(seed: seed)
+            while !sim.isFinished, sim.day < 60 {
+                sim.tick()
+                guard sim.latestVisualEvent != nil,
+                      sim.randomEventCooldownDaysForTesting >= 3 else { continue }
+
+                for _ in 0..<3 where !sim.isFinished {
+                    sim.tick()
+                    XCTAssertNil(sim.latestVisualEvent, "seed: \(seed), day: \(sim.day)")
+                }
+                verifiedCooldowns += 1
+                break
+            }
+        }
+
+        XCTAssertGreaterThan(verifiedCooldowns, 100)
+    }
+
+    func testRandomEventCooldownVariesBetweenThreeAndSixDays() {
+        var observed = Set<Int>()
+
+        for seed in UInt64(0)..<300 {
+            let sim = Simulation(seed: seed)
+            while !sim.isFinished, sim.day < 40, observed.count < 4 {
+                sim.tick()
+                if sim.latestVisualEvent != nil,
+                   (3...6).contains(sim.randomEventCooldownDaysForTesting) {
+                    observed.insert(sim.randomEventCooldownDaysForTesting)
+                }
+            }
+        }
+
+        XCTAssertEqual(observed, Set(3...6))
     }
 
     func testPassiveVignettesAreTerrainAndWeatherAwareAndFitEventStrip() {
@@ -688,22 +727,20 @@ final class SimulationTests: XCTestCase {
         XCTAssertGreaterThan(checkedEvents, 100)
     }
 
-    func testDailyEventTakesVisualPriorityAfterARiverCrossing() {
-        var observedOverwrite = false
-
+    func testRiverCrossingIsNotOverwrittenByASecondDailyEvent() {
+        var observedCrossing = false
         for seed in UInt64(0)..<300 {
             let sim = Simulation(seed: seed, supplies: Supplies(), milesTraveled: 1889)
             let log = sim.tick()
             guard log.contains("You arrive at the Fort Walla Walla crossing."),
                   let event = sim.latestVisualEvent else { continue }
-            if case .riverCrossing = event { continue }
-
-            observedOverwrite = true
-            XCTAssertTrue(visualEventMatchesDisplayedMessage(event, log.last ?? ""))
-            break
+            guard case .riverCrossing = event else {
+                return XCTFail("river art was overwritten by \(event)")
+            }
+            observedCrossing = true
         }
 
-        XCTAssertTrue(observedOverwrite, "expected a later daily event to replace river art")
+        XCTAssertTrue(observedCrossing, "expected at least one rendered crossing")
     }
 
     func testTerminalOutcomeClearsEarlierRiverVisualEvent() {

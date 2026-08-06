@@ -30,8 +30,11 @@ Cornerworld follows [Semantic Versioning](https://semver.org/).
   damage, repair days, harvest, and the year-end result.
 - A redesigned Farm clock with brisk, ambient, slow, very slow, and paused
   modes, readable event dwell time, and energy-aware timer tolerance.
-- An independent Overland clock with an eight-second ambient default, four
+- An independent Overland clock with a twelve-second ambient default, four
   speeds, pause, and minimum visual-event dwell time.
+- Calmer Overland pacing with a twelve-second ambient day, lower encounter
+  probability, randomized three-to-six-day cooldowns, and no stacked random
+  event on landmark or consequence days.
 
 ## 1.1.0 — 2026-08-03
 
