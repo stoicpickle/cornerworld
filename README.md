@@ -139,7 +139,7 @@ to its ending:
 | Paused | — |
 
 Visual events remain on screen for at least ten seconds, even in Brisk mode.
-Random encounters occur on roughly one third of eligible days and are followed
+Random encounters occur on roughly one-third of eligible days and are followed
 by a randomized three-to-six-day quiet stretch. Landmarks and other journey
 consequences can still occur naturally during that interval, but a landmark
 will not be overwritten by a second random event on the same day. The `--fast`
