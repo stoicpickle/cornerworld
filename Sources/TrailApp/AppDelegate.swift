@@ -81,7 +81,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let size = NSSize(width: TrailScene.logicalSize.width, height: TrailScene.logicalSize.height)
         window = CornerWindow(size: size)
 
-        skView = SKView(frame: NSRect(origin: .zero, size: size))
+        skView = DraggableWorldView(frame: NSRect(origin: .zero, size: size))
         skView.wantsLayer = true
         skView.layer?.cornerRadius = 12
         skView.layer?.masksToBounds = true

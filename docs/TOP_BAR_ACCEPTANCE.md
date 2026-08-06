@@ -43,6 +43,7 @@ AppKit rendering can still vary across operating-system versions.
 | Farm live menu | Structure | Show/Hide, New Farm, Worlds, Field Plan, Time, journal, and Quit are reachable | Pass |
 | Farm live menu | World/time submenus | All three world choices and Brisk/Ambient/Slow/Very slow/Paused are exposed | Pass |
 | Farm live window | Show/hide | On-screen 320x200 window count transitions `1 → 0 → 1` | Pass |
+| World window | Pointer drag | Borderless scene moves from `(8, 31)` to `(208, 231)` by dragging inside it | Pass |
 | Canopy item | Accessibility attributes | AX description and value include world, vine count, growth, and sound state | Pass |
 | Concurrent launch | Runtime creation | Overland, Farm, and Canopy each create an independent 320x200 window and status item | Pass |
 | Appearance change while paused | Live system transition | Paused icon redraws immediately after macOS changes appearance | Not yet proved |

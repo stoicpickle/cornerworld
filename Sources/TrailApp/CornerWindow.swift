@@ -20,9 +20,10 @@ final class CornerWindow: NSWindow {
         self.backgroundColor = NSColor(calibratedRed: 0.87, green: 0.82, blue: 0.72, alpha: 1)
         self.hasShadow = true
         self.level = .statusBar
-        self.isMovableByWindowBackground = false
+        self.isMovable = true
+        self.isMovableByWindowBackground = true
         self.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
-        self.ignoresMouseEvents = true
+        self.ignoresMouseEvents = false
     }
 
     override var canBecomeKey: Bool { false }

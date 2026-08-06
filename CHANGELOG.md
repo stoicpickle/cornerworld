@@ -6,6 +6,8 @@ Cornerworld follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Draggable borderless world windows for repositioning Overland, Farm, and
+  Canopy anywhere on the desktop.
 - A third, open-ended Canopy world with deterministic vertical vine growth,
   rain, flowers, visiting birds, pruning, and recurring swing events.
 - Original procedural pixel art and locally synthesized optional swing audio,

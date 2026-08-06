@@ -7,6 +7,9 @@ persistent 320×200 world sits in the corner of the screen, advances at its own
 pace, and exposes just enough control through the menu bar. It is designed to
 feel present without asking to become the center of attention.
 
+Drag anywhere inside a world to move its borderless window to another part of
+the desktop.
+
 ![The Overland scenario running in the desktop corner](docs/images/overland-window.png)
 
 Version 1.1 ships with **Overland**, a deterministic westward journey about
