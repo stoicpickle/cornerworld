@@ -18,6 +18,8 @@ jobs:
           persist-credentials: false
       - name: Toolchain
         run: swift --version
+      - name: Asset provenance
+        run: scripts/check-asset-provenance.sh
       - name: Debug tests
         run: swift test
       - name: Release tests

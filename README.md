@@ -252,3 +252,6 @@ and how to suggest corrections.
 ## License
 
 Cornerworld is available under the [MIT License](LICENSE).
+Generated and third-party art is tracked in the
+[asset-provenance ledger](docs/ASSET_PROVENANCE.md), including its source,
+creative brief, human-authored treatment, and latest terms review.

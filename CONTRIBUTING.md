@@ -40,11 +40,27 @@ Run before submitting:
 swift test
 swift test -c release
 swift build -c release
+scripts/check-asset-provenance.sh
 git diff --check
 ```
 
 Do not commit `.build`, credentials, generated review output, or private source
 material. New behavior should remain deterministic for a fixed seed.
+
+## Generated and third-party assets
+
+Every generated or third-party asset must be added to
+[the asset-provenance ledger](docs/ASSET_PROVENANCE.md). Record its source,
+tool or model, generation date, terms-review date, prompt or creative brief,
+seed when available, references, and meaningful human edits. Review the
+provider's current terms before merging; a previous asset review is not proof
+that the terms are unchanged.
+
+Use only original, appropriately licensed, or public-domain source material.
+Do not commit API keys, private references, copied characters or trademarks,
+sampled audio, or assets with unclear redistribution rights. Generated visual
+changes still require native-size screenshot proof and the normal validation
+commands above.
 
 ## Scenario proposals
 
