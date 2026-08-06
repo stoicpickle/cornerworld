@@ -44,6 +44,14 @@ final class CanopyScene: SKScene {
         static let worldBottom: CGFloat = 58
     }
 
+    private enum SwingTiming {
+        /// Four clean arc segments total 0.96 seconds, matching the whoop audio.
+        static let arcSegment: TimeInterval = 0.24
+        static let impactTurn: TimeInterval = 0.08
+        static let impactPause: TimeInterval = 0.18
+        static let impactSlide: TimeInterval = 0.75
+    }
+
     private var pendingSnapshot: CanopyPresentationSnapshot
     private let staticEventPose: Bool
 
@@ -291,12 +299,15 @@ final class CanopyScene: SKScene {
 
         var actions: [SKAction] = []
         for point in points.dropFirst() {
-            actions.append(.move(to: point, duration: 0.18))
+            actions.append(.move(to: point, duration: SwingTiming.arcSegment))
         }
         if case .wallImpact(let side) = outcome {
-            actions.append(.rotate(toAngle: side == .right ? -.pi / 9 : .pi / 9, duration: 0.08))
-            actions.append(.wait(forDuration: 0.18))
-            actions.append(.moveBy(x: 0, y: -52, duration: 0.75))
+            actions.append(.rotate(
+                toAngle: side == .right ? -.pi / 9 : .pi / 9,
+                duration: SwingTiming.impactTurn
+            ))
+            actions.append(.wait(forDuration: SwingTiming.impactPause))
+            actions.append(.moveBy(x: 0, y: -52, duration: SwingTiming.impactSlide))
         }
         node.run(.sequence(actions))
     }
