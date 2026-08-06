@@ -45,8 +45,8 @@ final class CanopyScene: SKScene {
     }
 
     private enum SwingTiming {
-        /// Four clean arc segments total 0.96 seconds, matching the whoop audio.
-        static let arcSegment: TimeInterval = 0.24
+        /// Four clean arc segments total 1.28 seconds for a readable, lazy swing.
+        static let arcSegment: TimeInterval = 0.32
         static let impactTurn: TimeInterval = 0.08
         static let impactPause: TimeInterval = 0.18
         static let impactSlide: TimeInterval = 0.75
@@ -150,8 +150,38 @@ final class CanopyScene: SKScene {
         for index in 0..<12 {
             let x = deterministic(index, seed: snapshot.seed, modulo: 300) + 10
             let y = deterministic(index + 40, seed: snapshot.seed, modulo: 105) + 82
-            addRect(x: CGFloat(x), y: CGFloat(y), width: 1, height: 1, color: color(0.24, 0.38, 0.48), z: 2)
+            addTwinklingStar(
+                index: index,
+                seed: snapshot.seed,
+                x: CGFloat(x),
+                y: CGFloat(y)
+            )
         }
+    }
+
+    private func addTwinklingStar(index: Int, seed: UInt64, x: CGFloat, y: CGFloat) {
+        let star = SKSpriteNode(
+            color: color(0.38, 0.58, 0.70),
+            size: CGSize(width: 1, height: 1)
+        )
+        star.anchorPoint = .zero
+        star.position = CGPoint(x: x, y: y)
+        star.zPosition = 2
+        star.alpha = 0.28 + CGFloat(deterministic(index + 80, seed: seed, modulo: 28)) / 100
+        addChild(star)
+
+        // Fixture captures stay byte-stable; only the live scene twinkles.
+        guard !staticEventPose else { return }
+        let halfCycle = 1.6 + TimeInterval(deterministic(index + 120, seed: seed, modulo: 18)) / 10
+        let delay = TimeInterval(deterministic(index + 160, seed: seed, modulo: 16)) / 10
+        let brighten = SKAction.fadeAlpha(to: 0.82, duration: halfCycle)
+        brighten.timingMode = .easeInEaseOut
+        let dim = SKAction.fadeAlpha(to: 0.24, duration: halfCycle)
+        dim.timingMode = .easeInEaseOut
+        star.run(.sequence([
+            .wait(forDuration: delay),
+            .repeatForever(.sequence([brighten, dim])),
+        ]))
     }
 
     private func drawVines(_ vines: [CanopyVine]) {

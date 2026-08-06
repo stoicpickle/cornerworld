@@ -35,7 +35,8 @@ Cornerworld follows [Semantic Versioning](https://semver.org/).
 - Calmer Overland pacing with a twelve-second ambient day, lower encounter
   probability, randomized three-to-six-day cooldowns, and no stacked random
   event on landmark or consequence days.
-- A slightly slower Canopy swing arc aligned with the generated whoop audio.
+- A slower, more readable Canopy swing arc and subtle asynchronous star
+  twinkling behind the jungle.
 
 ## 1.1.0 — 2026-08-03
 
