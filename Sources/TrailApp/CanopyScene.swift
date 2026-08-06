@@ -146,14 +146,47 @@ final class CanopyScene: SKScene {
         addRect(x: 205, y: 151, width: 28, height: 5, color: distantTrunk, z: 1)
         addRect(x: 289, y: 128, width: 26, height: 5, color: distantTrunk, z: 1)
 
-        let canopy = ["..JJJ...", ".JJJJJ..", "JJJJJJJ.", ".JJJJJJ.", "..JJJ..."]
-        for (index, x) in [-10, 22, 58, 96, 136, 176, 216, 302].enumerated() {
+        let hangingCrown = [
+            "JJJJJJJJJJJJ",
+            "JJJJJJJJ.JJJ",
+            ".JJJJJ.JJJJ.",
+            "...JJ...JJ..",
+            "....J.......",
+        ]
+        let splitCrown = [
+            "JJJJJJJJJJJJ",
+            "JJJ.JJJJJJJJ",
+            "JJJJJJ..JJJ.",
+            ".JJJ.....JJ..",
+            "..J......J..",
+        ]
+        let trailingCrown = [
+            "JJJJJJJJJJJJ",
+            "JJJJ.JJJJJJJ",
+            ".JJJ.JJJJJJ.",
+            "..JJ...JJJ..",
+            "...J....JJ..",
+        ]
+        let crowns: [(x: CGFloat, y: CGFloat, rows: [String], near: Bool)] = [
+            (-6, 190, hangingCrown, false),
+            (18, 192, splitCrown, true),
+            (42, 190, trailingCrown, false),
+            (70, 193, hangingCrown, false),
+            (96, 190, splitCrown, true),
+            (122, 192, trailingCrown, false),
+            (150, 190, hangingCrown, true),
+            (178, 193, splitCrown, false),
+            (206, 190, trailingCrown, true),
+            (234, 192, hangingCrown, false),
+            (306, 190, splitCrown, true),
+        ]
+        for crown in crowns {
             drawPixels(
-                canopy,
-                palette: ["J": index.isMultiple(of: 2) ? distantLeaf : nearLeaf],
-                scale: 4,
-                x: CGFloat(x),
-                y: CGFloat(176 + (index % 3) * 4),
+                crown.rows,
+                palette: ["J": crown.near ? nearLeaf : distantLeaf],
+                scale: 2,
+                x: crown.x,
+                y: crown.y,
                 z: 2
             )
         }

@@ -44,6 +44,8 @@ Cornerworld follows [Semantic Versioning](https://semver.org/).
   Canopy Wanderer, mirrored across both screen edges.
 - A transparent, palette-subdued Canopy midground with a more natural tree line,
   fern clumps, and layered bushes in place of the old rectangular hedge blocks.
+- Reworked Canopy's repeated plus-shaped treetops into a shallow, irregular
+  overhead fringe with a clear opening around the crescent moon.
 
 ## 1.1.0 — 2026-08-03
 
